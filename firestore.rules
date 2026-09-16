@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admin_users/$(request.auth.token.email)) ||
+        exists(/databases/$(database)/documents/admin_users/$(request.auth.uid))
+      );
+    }
+
+    match /admin_users/{email} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      // Users can read and write only their own profile and saved recipes
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+
+      match /saved/{recipeId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    match /recipes/{recipeId} {
+      allow read: if true;
+      // Main recipe document fields (including average_rating, review_count) can only be written by admin/backend
+      allow create, update, delete: if isAdmin();
+
+      // Sub-collection recipes/{recipeId}/reviews
+      match /reviews/{reviewId} {
+        allow read: if true;
+        
+        // 1. Only authenticated user can create a review
+        // 2. author_uid in data must match request.auth.uid (cannot spoof author)
+        // 3. rating must be valid number 1-5
+        // 4. comment max length 500 characters
+        allow create: if isSignedIn() &&
+          request.resource.data.author_uid == request.auth.uid &&
+          request.resource.data.rating >= 1 && request.resource.data.rating <= 5 &&
+          (!('comment' in request.resource.data) || request.resource.data.comment == null || (request.resource.data.comment is string && request.resource.data.comment.size() <= 500));
+        
+        // Only the review's original author can update it
+        allow update: if isSignedIn() && (
+          (resource.data.author_uid == request.auth.uid && request.resource.data.author_uid == request.auth.uid &&
+           request.resource.data.rating >= 1 && request.resource.data.rating <= 5 &&
+           (!('comment' in request.resource.data) || request.resource.data.comment == null || (request.resource.data.comment is string && request.resource.data.comment.size() <= 500))) ||
+          isAdmin()
+        );
+
+        // Only the review's author or admin can delete it
+        allow delete: if isSignedIn() && (
+          resource.data.author_uid == request.auth.uid || isAdmin()
+        );
+      }
+    }
+
+    match /pending/{pendingId} {
+      allow read: if isAdmin();
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    match /rejected/{rejectedId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /archived/{archivedId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

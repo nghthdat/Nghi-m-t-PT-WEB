@@ -1,0 +1,6 @@
+{
+  "name": "Ăn Gì Hôm Nay",
+  "description": "Ứng dụng chia sẻ, gợi ý công thức nấu ăn thông minh kèm cửa hàng dụng cụ & gia vị nhà bếp chuẩn vị Việt.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

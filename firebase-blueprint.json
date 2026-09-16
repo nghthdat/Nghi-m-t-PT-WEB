@@ -1,0 +1,145 @@
+{
+  "entities": {
+    "admin_users": {
+      "title": "Admin Users",
+      "description": "Authorized admin users with role and permissions",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["email", "role"]
+    },
+    "recipes": {
+      "title": "Recipes",
+      "description": "Approved and published recipes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "image": { "type": "string" },
+        "prepTime": { "type": "string" },
+        "servings": { "type": "string" },
+        "difficulty": { "type": "string" },
+        "calories": { "type": "number" },
+        "categories": { "type": "array", "items": { "type": "string" } },
+        "posted_by_admin": { "type": "boolean" },
+        "admin_email": { "type": "string" },
+        "approved_at": { "type": "string" },
+        "approved_by": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title"]
+    },
+    "pending": {
+      "title": "Pending Recipes",
+      "description": "Recipes submitted and waiting for moderation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "string" },
+        "isValid": { "type": "boolean" },
+        "needsManualReview": { "type": "boolean" },
+        "aiReviewReason": { "type": "string" },
+        "isDuplicate": { "type": "boolean" },
+        "duplicateDishName": { "type": "string" },
+        "duplicateSimilarity": { "type": "number" },
+        "duplicateExplanation": { "type": "string" },
+        "submittedAt": { "type": "string" }
+      },
+      "required": ["id", "title", "status"]
+    },
+    "rejected": {
+      "title": "Rejected Recipes",
+      "description": "Recipes rejected during moderation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "rejectReason": { "type": "string" },
+        "rejectedBy": { "type": "string" },
+        "rejectedAt": { "type": "string" }
+      },
+      "required": ["id", "title", "rejectReason", "rejectedAt"]
+    },
+    "archived": {
+      "title": "Archived Recipes",
+      "description": "Recipes taken down or archived",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "archivedBy": { "type": "string" },
+        "archivedAt": { "type": "string" }
+      },
+      "required": ["id", "title", "archivedAt"]
+    },
+    "users": {
+      "title": "User Profiles",
+      "description": "Registered user accounts and profiles",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "display_name": { "type": "string" },
+        "email": { "type": "string" },
+        "avatar_url": { "type": "string" },
+        "created_at": { "type": "string" },
+        "badge": { "type": "array", "items": { "type": "string" } },
+        "saved_recipes": { "type": "array", "items": { "type": "string" } },
+        "bio": { "type": "string" }
+      },
+      "required": ["uid", "email", "display_name", "created_at"]
+    },
+    "recipe_reviews": {
+      "title": "Recipe Reviews",
+      "description": "User reviews, ratings and comments for a recipe",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "recipe_id": { "type": "string" },
+        "author_uid": { "type": "string" },
+        "author_name": { "type": "string" },
+        "author_avatar": { "type": "string" },
+        "rating": { "type": "number", "minimum": 1, "maximum": 5 },
+        "comment": { "type": "string", "maxLength": 500 },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" },
+        "edited": { "type": "boolean" }
+      },
+      "required": ["author_uid", "author_name", "rating", "created_at"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "users",
+      "description": "User profile, badges, and saved recipe list"
+    },
+    "admin_users/{adminEmail}": {
+      "schema": "admin_users",
+      "description": "Stores emails of authorized administrators"
+    },
+    "recipes/{recipeId}": {
+      "schema": "recipes",
+      "description": "Public approved recipes"
+    },
+    "recipes/{recipeId}/reviews/{reviewId}": {
+      "schema": "recipe_reviews",
+      "description": "Reviews and ratings subcollection for each recipe"
+    },
+    "pending/{pendingId}": {
+      "schema": "pending",
+      "description": "Recipes waiting for admin review"
+    },
+    "rejected/{rejectedId}": {
+      "schema": "rejected",
+      "description": "Archive of rejected submissions"
+    },
+    "archived/{archivedId}": {
+      "schema": "archived",
+      "description": "Unlisted/archived recipes that can be restored"
+    }
+  }
+}

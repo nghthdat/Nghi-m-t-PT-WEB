@@ -1,0 +1,33 @@
+const fs = require('fs');
+let content = fs.readFileSync('server.ts', 'utf8');
+
+const retryFunc = `
+// Helper to retry Gemini generateContent calls
+async function generateContentWithRetry(ai, params, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await ai.models.generateContent(params);
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      const is503 = error.status === 503 || (error.error && error.error.code === 503) || error.message?.includes('503');
+      const is429 = error.status === 429 || (error.error && error.error.code === 429) || error.message?.includes('429');
+      
+      if (is503 || is429) {
+        const delayMs = attempt * 1500;
+        console.log(\`Gemini API returned \${is503 ? '503' : '429'}, retrying in \${delayMs}ms (Attempt \${attempt} of \${maxRetries})...\`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      } else {
+        throw error;
+      }
+    }
+  }
+}
+`;
+
+content = content.replace('let aiClient: GoogleGenAI | null = null;', retryFunc + '\nlet aiClient: GoogleGenAI | null = null;');
+
+content = content.replace(/await ai\.models\.generateContent\(/g, 'await generateContentWithRetry(ai, ');
+
+fs.writeFileSync('server.ts', content);
