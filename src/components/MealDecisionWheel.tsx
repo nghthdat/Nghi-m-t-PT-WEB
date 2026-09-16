@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Sparkles, Dices, Clock, Flame, Users, ArrowRight, BookmarkCheck, ChefHat, Check, ShoppingBag, X, Copy, RefreshCw } from 'lucide-react';
 import { Recipe, Ingredient } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { OptimizedImage } from './OptimizedImage';
 
 interface MealDecisionWheelProps {
   recipes: Recipe[];
@@ -286,10 +287,10 @@ export const MealDecisionWheel: React.FC<MealDecisionWheelProps> = ({
           </button>
 
           <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-[#F7F2EE] relative mt-1 sm:mt-0">
-            <img
+            <OptimizedImage
               src={currentCombo.mainDish.image}
               alt={currentCombo.mainDish.title}
-              referrerPolicy="no-referrer"
+              aspectRatio="1/1"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           </div>
@@ -326,10 +327,10 @@ export const MealDecisionWheel: React.FC<MealDecisionWheelProps> = ({
           </button>
 
           <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-[#F7F2EE] relative mt-1 sm:mt-0">
-            <img
+            <OptimizedImage
               src={currentCombo.soupDish.image}
               alt={currentCombo.soupDish.title}
-              referrerPolicy="no-referrer"
+              aspectRatio="1/1"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           </div>
@@ -366,10 +367,10 @@ export const MealDecisionWheel: React.FC<MealDecisionWheelProps> = ({
           </button>
 
           <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-[#F7F2EE] relative mt-1 sm:mt-0">
-            <img
+            <OptimizedImage
               src={currentCombo.sideDish.image}
               alt={currentCombo.sideDish.title}
-              referrerPolicy="no-referrer"
+              aspectRatio="1/1"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           </div>

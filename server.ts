@@ -533,6 +533,37 @@ async function startServer() {
     res.json({ success: true, data: recipe, comments, reviews: reviewsStore[recipe.id] || [] });
   });
 
+  // 2.1 Update recipe image / gallery (Thay đổi ảnh món ăn)
+  app.put('/api/recipes/:id/image', (req, res) => {
+    try {
+      const { id } = req.params;
+      const { image, gallery } = req.body;
+
+      if (!image && !gallery) {
+        return res.status(400).json({ success: false, error: 'Vui lòng cung cấp hình ảnh mới.' });
+      }
+
+      const recipeIndex = recipesStore.findIndex(r => r.id === id);
+      if (recipeIndex === -1) {
+        const pendingIndex = pendingStore.findIndex(r => r.id === id);
+        if (pendingIndex !== -1) {
+          if (image) pendingStore[pendingIndex].image = image;
+          if (gallery) pendingStore[pendingIndex].gallery = gallery;
+          return res.json({ success: true, message: 'Đã cập nhật ảnh món ăn thành công!', data: pendingStore[pendingIndex] });
+        }
+        return res.status(404).json({ success: false, error: 'Không tìm thấy món ăn để thay đổi ảnh.' });
+      }
+
+      if (image) recipesStore[recipeIndex].image = image;
+      if (gallery) recipesStore[recipeIndex].gallery = gallery;
+
+      res.json({ success: true, message: 'Đã cập nhật ảnh món ăn thành công!', data: recipesStore[recipeIndex] });
+    } catch (err: any) {
+      console.error('Lỗi khi cập nhật ảnh món ăn:', err);
+      res.status(500).json({ success: false, error: err.message || 'Lỗi xử lý thay đổi ảnh.' });
+    }
+  });
+
   // Get comments for recipe
   app.get('/api/recipes/:id/comments', (req, res) => {
     const recipeId = req.params.id;
@@ -827,6 +858,7 @@ Trả về CHỈ JSON theo format sau (KHÔNG thêm markdown text):
         title,
         description,
         image,
+        gallery,
         ingredients,
         steps,
         categories,
@@ -1016,6 +1048,7 @@ Trả về CHỈ JSON theo format:
         title,
         description: description || 'Món ngon chia sẻ từ thành viên cộng đồng.',
         image: defaultImage,
+        gallery: Array.isArray(gallery) ? gallery : [],
         prepTime: prepTime || '25 Phút',
         servings: servings || '3-4 Người',
         difficulty: 'Dễ',

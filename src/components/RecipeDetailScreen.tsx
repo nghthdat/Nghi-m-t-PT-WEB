@@ -3,12 +3,14 @@ import {
   ArrowLeft, Heart, Share2, Clock, Users, Flame, ChefHat, 
   Check, CheckSquare, Square, Play, Sparkles, MessageCircle, 
   Star, Send, X, ChevronRight, ChevronLeft, Volume2, Timer, LogIn, User as UserIcon,
-  Loader2
+  Loader2, Camera
 } from 'lucide-react';
 import { Recipe, CommentItem } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { submitRecipeReview, fetchRecipeReviews } from '../lib/firebase';
 import { RecipeShopRecommendations } from './RecipeShopRecommendations';
+import { OptimizedImage } from './OptimizedImage';
+import { ChangeDishImageModal } from './ChangeDishImageModal';
 
 interface RecipeDetailScreenProps {
   recipe: Recipe;
@@ -38,6 +40,12 @@ export const RecipeDetailScreen: React.FC<RecipeDetailScreenProps> = ({
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [currentRating, setCurrentRating] = useState<number>(Number(recipe.rating) || 5.0);
   const [currentReviewCount, setCurrentReviewCount] = useState<number>(Number(recipe.reviewCount) || 0);
+  const [activeImage, setActiveImage] = useState<string>(recipe.image);
+  const [isChangeImageModalOpen, setIsChangeImageModalOpen] = useState(false);
+
+  useEffect(() => {
+    setActiveImage(recipe.image);
+  }, [recipe.image]);
 
   const isSaved = savedRecipeIds.includes(recipe.id) || recipe.isSaved;
 
@@ -267,6 +275,15 @@ export const RecipeDetailScreen: React.FC<RecipeDetailScreenProps> = ({
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setIsChangeImageModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#EAE0D5] text-xs font-bold text-[#a33e07] hover:bg-[#FFF0E6] hover:border-[#a33e07] transition-all shadow-xs cursor-pointer"
+            title="Đổi ảnh món ăn từ thư viện máy"
+          >
+            <Camera className="w-4 h-4" />
+            <span>Thay đổi ảnh</span>
+          </button>
+
+          <button
             onClick={handleShare}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-[#EAE0D5] text-xs font-bold text-[#6B5D4F] hover:bg-[#F7F2EE] transition-all shadow-xs"
           >
@@ -290,13 +307,16 @@ export const RecipeDetailScreen: React.FC<RecipeDetailScreenProps> = ({
 
       {/* Hero Image Section with Overlay */}
       <div className="relative rounded-3xl overflow-hidden aspect-[16/9] sm:aspect-[21/9] bg-[#2B2118] shadow-lg border border-[#EAE0D5]">
-        <img
-          src={recipe.image}
+        <OptimizedImage
+          src={activeImage}
           alt={recipe.title}
-          referrerPolicy="no-referrer"
+          aspectRatio="auto"
           className="w-full h-full object-cover"
+          containerClassName="w-full h-full"
+          allowZoom
+          priority
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none" />
 
         {/* Overlay Title & Badges */}
         <div className="absolute bottom-6 left-6 right-6 text-white space-y-2">
@@ -337,6 +357,34 @@ export const RecipeDetailScreen: React.FC<RecipeDetailScreenProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Recipe Gallery Strip if available */}
+      {recipe.gallery && recipe.gallery.length > 0 && (
+        <div className="space-y-1.5">
+          <span className="text-[11px] font-bold text-[#6B5D4F]">Góc chụp khác của món ăn:</span>
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-1">
+            <button
+              onClick={() => setActiveImage(recipe.image)}
+              className={`w-20 h-14 rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
+                activeImage === recipe.image ? 'border-[#a33e07] scale-105 shadow-md ring-2 ring-orange-200' : 'border-[#EAE0D5] opacity-75 hover:opacity-100'
+              }`}
+            >
+              <img src={recipe.image} alt="Ảnh chính" className="w-full h-full object-cover" />
+            </button>
+            {recipe.gallery.map((gUrl, idx) => (
+              <button
+                key={idx}
+                onClick={() => setActiveImage(gUrl)}
+                className={`w-20 h-14 rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
+                  activeImage === gUrl ? 'border-[#a33e07] scale-105 shadow-md ring-2 ring-orange-200' : 'border-[#EAE0D5] opacity-75 hover:opacity-100'
+                }`}
+              >
+                <img src={gUrl} alt={`Ảnh góc ${idx + 1}`} className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -552,11 +600,12 @@ export const RecipeDetailScreen: React.FC<RecipeDetailScreenProps> = ({
 
                 {st.image && (
                   <div className="mt-3 rounded-xl overflow-hidden aspect-[16/9] max-h-56 bg-[#F7F2EE]">
-                    <img
+                    <OptimizedImage
                       src={st.image}
                       alt={`Bước ${idx + 1}: ${st.description ? st.description.substring(0, 50) : 'Thực hiện'}`}
-                      referrerPolicy="no-referrer"
+                      aspectRatio="16/9"
                       className="w-full h-full object-cover"
+                      allowZoom
                     />
                   </div>
                 )}
@@ -786,11 +835,12 @@ export const RecipeDetailScreen: React.FC<RecipeDetailScreenProps> = ({
           <div className="max-w-2xl mx-auto w-full my-auto space-y-6 text-center">
             {recipe.steps[currentCookStep]?.image && (
               <div className="rounded-2xl overflow-hidden aspect-[16/9] max-h-64 mx-auto border border-white/20 shadow-2xl">
-                <img
+                <OptimizedImage
                   src={recipe.steps[currentCookStep].image}
                   alt={`Bước ${currentCookStep + 1}: ${recipe.steps[currentCookStep].description ? recipe.steps[currentCookStep].description.substring(0, 50) : 'Thực hiện'}`}
-                  referrerPolicy="no-referrer"
+                  aspectRatio="16/9"
                   className="w-full h-full object-cover"
+                  allowZoom
                 />
               </div>
             )}
@@ -895,6 +945,17 @@ export const RecipeDetailScreen: React.FC<RecipeDetailScreenProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal Thay Đổi Ảnh Món Ăn */}
+      <ChangeDishImageModal
+        isOpen={isChangeImageModalOpen}
+        onClose={() => setIsChangeImageModalOpen(false)}
+        recipe={recipe}
+        onImageUpdated={(newUrl) => {
+          setActiveImage(newUrl);
+          recipe.image = newUrl;
+        }}
+      />
     </div>
   );
 };

@@ -3,7 +3,7 @@ import {
   ShieldCheck, Check, X, AlertTriangle, Sparkles, 
   Lock, Eye, Flame, Clock, Users, RefreshCw, ChefHat, 
   Send, Plus, Trash2, Archive, RotateCcw, Search, Filter, 
-  HelpCircle, Info, Key, LogOut, BookOpen, AlertCircle, FileText, CheckCircle2
+  HelpCircle, Info, Key, LogOut, BookOpen, AlertCircle, FileText, CheckCircle2, Camera
 } from 'lucide-react';
 import { 
   PendingRecipe, 
@@ -30,6 +30,9 @@ import {
   onAuthStateChanged, 
   User 
 } from 'firebase/auth';
+import { ImageUploadDropzone } from './ImageUploadDropzone';
+import { OptimizedImage } from './OptimizedImage';
+import { ChangeDishImageModal } from './ChangeDishImageModal';
 
 interface AdminScreenProps {
   onRecipeApproved: (recipe: Recipe) => void;
@@ -90,6 +93,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   // Recipes search & filter
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTag, setSelectedTag] = useState<string>('Tất cả');
+  const [recipeToChangeImage, setRecipeToChangeImage] = useState<Recipe | null>(null);
 
   // Admin New Post Form state
   const [postTitle, setPostTitle] = useState<string>('');
@@ -976,7 +980,12 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   {pendingList.slice(0, 3).map((item) => (
                     <div key={item.id} className="flex items-center justify-between p-3 rounded-2xl bg-[#FFF8F0] border border-[#EAE0D5]">
                       <div className="flex items-center gap-3">
-                        <img src={item.image} alt={item.title} className="w-12 h-12 rounded-xl object-cover" />
+                        <OptimizedImage
+                          src={item.image}
+                          alt={item.title}
+                          className="w-12 h-12 rounded-xl object-cover"
+                          containerClassName="w-12 h-12 rounded-xl shrink-0"
+                        />
                         <div>
                           <div className="font-bold text-xs text-[#2B2118]">{item.title}</div>
                           <div className="text-[11px] text-[#8C7D6F]">Tác giả: {item.author?.name || item.author_name || 'Đầu bếp'} • {item.prepTime}</div>
@@ -1067,10 +1076,12 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
               >
                 <div className="flex flex-col sm:flex-row gap-4 items-start">
                   <div className="relative w-full sm:w-44 aspect-[4/3] rounded-xl overflow-hidden bg-[#F7F2EE] shrink-0">
-                    <img
+                    <OptimizedImage
                       src={item.image}
                       alt={item.title}
                       className="w-full h-full object-cover"
+                      aspectRatio="4/3"
+                      allowZoom
                     />
                     {item.isDuplicate ? (
                       <div className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-extrabold flex items-center gap-1 shadow-xs">
@@ -1282,16 +1293,14 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-[#2B2118] block mb-1">Link ảnh món ăn (URL)</label>
-                <input
-                  type="url"
-                  placeholder="https://... (để trống sẽ dùng ảnh mặc định món ngon)"
-                  value={postImage}
-                  onChange={(e) => setPostImage(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl bg-[#FFF8F0] border border-[#EAE0D5] focus:outline-[#a33e07]"
-                />
-              </div>
+              <ImageUploadDropzone
+                value={postImage}
+                onChange={(url) => setPostImage(url)}
+                label="Hình ảnh món ăn"
+                helperText="Tải ảnh trực tiếp từ máy tính/điện thoại (JPG, PNG, WebP) hoặc chọn ảnh mẫu. Tự động nén tối ưu."
+                aspectRatio="16/9"
+                maxDimension={1280}
+              />
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
@@ -1566,7 +1575,12 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                       <tr key={r.id} className="hover:bg-[#FFFDFB] transition-colors">
                         <td className="p-3.5">
                           <div className="flex items-center gap-3">
-                            <img src={r.image} alt={r.title} className="w-10 h-10 rounded-xl object-cover shrink-0" />
+                            <OptimizedImage
+                              src={r.image}
+                              alt={r.title}
+                              className="w-10 h-10 rounded-xl object-cover"
+                              containerClassName="w-10 h-10 rounded-xl shrink-0"
+                            />
                             <div>
                               <div className="font-bold text-[#2B2118] line-clamp-1">{r.title}</div>
                               <div className="text-[11px] text-[#8C7D6F]">{r.servings} • {r.difficulty}</div>
@@ -1596,6 +1610,14 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                         </td>
                         <td className="p-3.5 text-right">
                           <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setRecipeToChangeImage(r)}
+                              className="px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-[#a33e07] text-[11px] font-bold border border-orange-200 transition-colors flex items-center gap-1 cursor-pointer"
+                              title="Thay đổi ảnh món ăn từ máy"
+                            >
+                              <Camera className="w-3.5 h-3.5" />
+                              Đổi ảnh
+                            </button>
                             <button
                               onClick={() => setInspectRecipe(r)}
                               className="p-1.5 text-[#6B5D4F] hover:text-[#a33e07] rounded-lg hover:bg-[#FFF8F0]"
@@ -1642,7 +1664,12 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
               {archivedList.map((item) => (
                 <div key={item.id} className="bg-white p-5 rounded-2xl border border-[#EAE0D5] shadow-xs space-y-3">
                   <div className="flex gap-3">
-                    <img src={item.image} alt={item.title} className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                    <OptimizedImage
+                      src={item.image}
+                      alt={item.title}
+                      className="w-16 h-16 rounded-xl object-cover"
+                      containerClassName="w-16 h-16 rounded-xl shrink-0"
+                    />
                     <div className="flex-1">
                       <h4 className="font-bold text-sm text-[#2B2118]">{item.title}</h4>
                       <p className="text-[11px] text-[#8C7D6F] mt-0.5">
@@ -1729,10 +1756,23 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
             <div className="space-y-3 text-xs text-[#2B2118]">
               <div className="flex items-center gap-3">
-                <img src={inspectRecipe.image} alt={inspectRecipe.title} className="w-24 h-24 rounded-2xl object-cover" />
+                <OptimizedImage
+                  src={inspectRecipe.image}
+                  alt={inspectRecipe.title}
+                  className="w-24 h-24 rounded-2xl object-cover"
+                  containerClassName="w-24 h-24 rounded-2xl shrink-0"
+                  allowZoom
+                />
                 <div>
                   <p className="font-medium text-[#524436]">{inspectRecipe.description}</p>
                   <p className="text-[#8C7D6F] mt-1">Khẩu phần: {inspectRecipe.servings} • Thời gian: {inspectRecipe.prepTime} • Calo: {inspectRecipe.calories} kcal</p>
+                  <button
+                    onClick={() => setRecipeToChangeImage(inspectRecipe)}
+                    className="mt-2 px-3 py-1.5 rounded-xl bg-[#FFF0E6] hover:bg-[#FFE0CC] text-[#a33e07] text-xs font-bold border border-[#FFE0CC] flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    Thay đổi ảnh món này từ máy
+                  </button>
                 </div>
               </div>
 
@@ -1841,6 +1881,18 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
           </div>
         </div>
       )}
+      {/* Modal Thay Đổi Ảnh Món Ăn Cho Admin */}
+      <ChangeDishImageModal
+        isOpen={!!recipeToChangeImage}
+        onClose={() => setRecipeToChangeImage(null)}
+        recipe={recipeToChangeImage}
+        onImageUpdated={(newUrl, updated) => {
+          setAllRecipes(prev => prev.map(r => r.id === updated.id ? { ...r, image: newUrl } : r));
+          if (inspectRecipe && inspectRecipe.id === updated.id) {
+            setInspectRecipe(prev => prev ? { ...prev, image: newUrl } : null);
+          }
+        }}
+      />
     </div>
   );
 };

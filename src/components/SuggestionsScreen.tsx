@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, ArrowLeft, Plus, X, Clock, Flame, CheckCircle2, AlertCircle, ChefHat, Filter, RefreshCw } from 'lucide-react';
 import { Recipe, SuggestedRecipeMatch } from '../types';
+import { OptimizedImage } from './OptimizedImage';
 
 interface SuggestionsScreenProps {
   currentIngredients: string[];
@@ -210,10 +211,10 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
                 >
                   {/* Recipe Image with Badge */}
                   <div className="relative aspect-[4/3] w-full sm:w-52 sm:h-36 shrink-0 rounded-xl overflow-hidden bg-[#F7F2EE]">
-                    <img
+                    <OptimizedImage
                       src={recipe.image}
                       alt={recipe.title}
-                      referrerPolicy="no-referrer"
+                      aspectRatio="4/3"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
 

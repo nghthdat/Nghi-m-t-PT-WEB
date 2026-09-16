@@ -44,6 +44,8 @@ export interface Recipe {
   title: string;
   description: string;
   image: string;
+  images?: string[];
+  gallery?: string[];
   prepTime: string; // e.g. "45'" or "45 Phút"
   cookTime?: string;
   servings: string; // e.g. "4 Người"
@@ -164,7 +166,7 @@ export interface UserProfile {
   experience_points?: number;
   level?: number;
   cooking_style?: string[];
-  member_tier?: 'Thành viên mới' | 'Bếp Trưởng Thân Thiết' | 'Chuyên Gia Ẩm Thực' | 'Quản Trị Viên VIP';
+  member_tier?: 'Thành viên mới' | 'Bếp Trưởng Thân Thiết' | 'Chuyên Gia Ẩm Thực' | 'Quản Trị Viên VIP' | 'Thành Viên Yêu Bếp';
 }
 
 export type PendingUserAction = 
