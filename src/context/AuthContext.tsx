@@ -8,7 +8,6 @@ import {
   auth, 
   checkIsAdminUser, 
   getOrCreateUserProfile, 
-  fetchUserProfile, 
   updateUserProfileDoc,
   toggleRecipeSavedForUser,
   signInWithGoogle,
@@ -415,6 +414,7 @@ export const AuthProvider: React.FC<{
         handleEmailRegister,
         handleResetPassword,
         handleSignOut,
+        handleQuickLogin,
         toggleFavorite,
         updateProfileData,
         showToast

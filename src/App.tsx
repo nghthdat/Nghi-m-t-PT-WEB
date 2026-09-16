@@ -6,7 +6,7 @@ import { SuggestionsScreen } from './components/SuggestionsScreen';
 import { RecipeDetailScreen } from './components/RecipeDetailScreen';
 import { SubmitRecipeScreen } from './components/SubmitRecipeScreen';
 import { ProfileScreen } from './components/ProfileScreen';
-import { AdminScreen } from './components/AdminScreen';
+
 import { ShopScreen } from './components/ShopScreen';
 import { CartDrawer } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
@@ -17,13 +17,18 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { Recipe, PendingRecipe, SuggestedRecipeMatch } from './types';
 import { INITIAL_RECIPES } from './data/seedRecipes';
-import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Info, Loader2 } from 'lucide-react';
 
-function MainAppContent() {
+interface MainAppContentProps {
+  currentTab: string;
+  setCurrentTab: (tab: string) => void;
+}
+
+function MainAppContent({ currentTab, setCurrentTab }: MainAppContentProps) {
   const { toast, isAdmin } = useAuth();
-  const [currentTab, setCurrentTab] = useState<string>('home');
   const [profileInitialTab, setProfileInitialTab] = useState<'posted' | 'saved' | 'cart' | 'orders' | 'badges' | 'moderation'>('posted');
   const [recipes, setRecipes] = useState<Recipe[]>(INITIAL_RECIPES);
+  const [isLoadingRecipes, setIsLoadingRecipes] = useState<boolean>(true);
   const [pendingCount, setPendingCount] = useState<number>(1);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   
@@ -31,6 +36,7 @@ function MainAppContent() {
   const [searchIngredients, setSearchIngredients] = useState<string[]>(['Trứng gà', 'Cà chua']);
   const [suggestions, setSuggestions] = useState<SuggestedRecipeMatch[]>([]);
   const [isSuggesting, setIsSuggesting] = useState<boolean>(false);
+  const [hasTriggeredSearch, setHasTriggeredSearch] = useState<boolean>(false);
 
   const handleNavigateToProfileTab = (tab: 'posted' | 'saved' | 'cart' | 'orders' | 'badges' | 'moderation' = 'posted') => {
     setSelectedRecipe(null);
@@ -49,6 +55,8 @@ function MainAppContent() {
       }
     } catch (err) {
       console.error('Failed to fetch recipes:', err);
+    } finally {
+      setIsLoadingRecipes(false);
     }
   };
 
@@ -66,8 +74,7 @@ function MainAppContent() {
   };
 
   useEffect(() => {
-    fetchRecipes();
-    fetchPendingCount();
+    Promise.all([fetchRecipes(), fetchPendingCount()]);
     
     const handleProfileUpdate = () => {
       fetchRecipes();
@@ -114,6 +121,7 @@ function MainAppContent() {
     setSearchIngredients(ingredients);
     setCurrentTab('suggestions');
     setIsSuggesting(true);
+    setHasTriggeredSearch(true);
 
     try {
       const res = await fetch('/api/suggest-recipes', {
@@ -196,7 +204,7 @@ function MainAppContent() {
         setCurrentTab={(tab) => {
           setSelectedRecipe(null);
           setCurrentTab(tab);
-          if (tab === 'suggestions' && suggestions.length === 0) {
+          if (tab === 'suggestions' && suggestions.length === 0 && hasTriggeredSearch) {
             handleSearchWithIngredients(searchIngredients);
           }
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -208,17 +216,24 @@ function MainAppContent() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 pt-6">
         {currentTab === 'home' && (
-          <HomeScreen
-            recipes={recipes}
-            onSelectRecipe={handleSelectRecipe}
-            onToggleFavorite={handleToggleFavorite}
-            onSearchWithIngredients={handleSearchWithIngredients}
-            onNavigateToSubmit={() => {
-              setSelectedRecipe(null);
-              setCurrentTab('submit');
-            }}
-            onNavigateToShop={handleNavigateToShop}
-          />
+          isLoadingRecipes ? (
+            <div className="flex flex-col justify-center items-center h-64 space-y-4">
+              <Loader2 className="w-8 h-8 animate-spin text-[#a33e07]" />
+              <span className="text-[#a33e07] font-medium text-sm">Đang tải dữ liệu...</span>
+            </div>
+          ) : (
+            <HomeScreen
+              recipes={recipes}
+              onSelectRecipe={handleSelectRecipe}
+              onToggleFavorite={handleToggleFavorite}
+              onSearchWithIngredients={handleSearchWithIngredients}
+              onNavigateToSubmit={() => {
+                setSelectedRecipe(null);
+                setCurrentTab('submit');
+              }}
+              onNavigateToShop={handleNavigateToShop}
+            />
+          )
         )}
 
         {currentTab === 'shop' && (
@@ -314,7 +329,7 @@ function MainAppContent() {
         setCurrentTab={(tab) => {
           setSelectedRecipe(null);
           setCurrentTab(tab);
-          if (tab === 'suggestions' && suggestions.length === 0) {
+          if (tab === 'suggestions' && suggestions.length === 0 && hasTriggeredSearch) {
             handleSearchWithIngredients(searchIngredients);
           }
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -335,10 +350,11 @@ function MainAppContent() {
 }
 
 export function App() {
+  const [currentTab, setCurrentTab] = useState<string>('home');
   return (
-    <AuthProvider>
+    <AuthProvider onNavigateTab={setCurrentTab}>
       <CartProvider>
-        <MainAppContent />
+        <MainAppContent currentTab={currentTab} setCurrentTab={setCurrentTab} />
       </CartProvider>
     </AuthProvider>
   );
