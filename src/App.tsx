@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { Navbar } from './components/Navbar';
 import { BottomNav } from './components/BottomNav';
 import { HomeScreen } from './components/HomeScreen';
@@ -339,6 +340,7 @@ export function App() {
     <AuthProvider>
       <CartProvider>
         <MainAppContent />
+        <Analytics />
       </CartProvider>
     </AuthProvider>
   );
