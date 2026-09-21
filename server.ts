@@ -1152,12 +1152,17 @@ Trả về CHỈ JSON theo format:
     }
 
     let updatedCount = 0;
+    let capturedOldName = '';
 
     const updateAuthor = (recipe: any) => {
       let changed = false;
       const isOwner = recipe.author_uid === uid || (recipe.author && recipe.author.uid === uid);
       
       if (isOwner) {
+        if (!capturedOldName) {
+          capturedOldName = recipe.author_name || (recipe.author && recipe.author.name) || '';
+        }
+
         if (name) {
           if (recipe.author_name !== name) {
             recipe.author_name = name;
@@ -1199,6 +1204,29 @@ Trả về CHỈ JSON theo format:
           }
         }
       });
+    }
+
+    // Tự động ghi đè tên tác giả vào file gốc seedRecipes.ts (persistence workaround)
+    if (name && capturedOldName && capturedOldName !== name) {
+      try {
+        const seedPath = path.join(process.cwd(), 'src', 'data', 'seedRecipes.ts');
+        if (fs.existsSync(seedPath)) {
+          let content = fs.readFileSync(seedPath, 'utf8');
+          
+          const regex1 = new RegExp(`name:\\s*['"]${capturedOldName}['"]`, 'g');
+          content = content.replace(regex1, `name: '${name}'`);
+          
+          const regex2 = new RegExp(`author_name:\\s*['"]${capturedOldName}['"]`, 'g');
+          content = content.replace(regex2, `author_name: '${name}'`);
+
+          const regex3 = new RegExp(`userName:\\s*['"]${capturedOldName}['"]`, 'g');
+          content = content.replace(regex3, `userName: '${name}'`);
+
+          fs.writeFileSync(seedPath, content, 'utf8');
+        }
+      } catch (e) {
+        console.error('Lỗi cập nhật seedRecipes.ts:', e);
+      }
     }
 
     res.json({ success: true, updatedCount });

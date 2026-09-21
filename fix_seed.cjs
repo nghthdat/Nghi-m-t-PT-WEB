@@ -1,0 +1,1 @@
+const fs=require('fs'); let c=fs.readFileSync('src/data/seedRecipes.ts','utf8'); c=c.replace(/name: 'Minh Châu'/g, "uid: 'usr-minhchau-chef', name: 'Minh Châu'"); fs.writeFileSync('src/data/seedRecipes.ts', c);
