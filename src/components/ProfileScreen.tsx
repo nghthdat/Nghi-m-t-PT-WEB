@@ -4,7 +4,7 @@ import {
   Grid, Heart, Settings, Edit3, Sparkles, LogIn, LogOut, Check, X,
   ShoppingBag, Package, Truck, Clock, Store, MapPin, Phone, Mail,
   ShieldCheck, Zap, Star, Utensils, Compass, ChevronRight, CheckCircle2,
-  Trash2, Minus, Tag, ArrowRight
+  Trash2, Minus, Tag, ArrowRight, Camera, UploadCloud
 } from 'lucide-react';
 import { Recipe, UserProfile } from '../types';
 import { RecipeCard } from './RecipeCard';
@@ -12,6 +12,8 @@ import { AdminScreen } from './AdminScreen';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { REALISTIC_USERS } from '../lib/firebase';
+import { optimizeImageFile } from '../lib/imageOptimization';
+import { ChangeDishImageModal } from './ChangeDishImageModal';
 
 interface ProfileScreenProps {
   recipes: Recipe[];
@@ -77,6 +79,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [activeTab, setActiveTab] = useState<'posted' | 'saved' | 'cart' | 'orders' | 'badges' | 'moderation'>(initialTab);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSwitchMenuOpen, setIsSwitchMenuOpen] = useState(false);
+  const [recipeToChangeImage, setRecipeToChangeImage] = useState<Recipe | null>(null);
 
   React.useEffect(() => {
     if (initialTab) {
@@ -93,6 +96,21 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [editAvatar, setEditAvatar] = useState('');
   const [editStyles, setEditStyles] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Avatar upload handler from device
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      showToast('Đang tối ưu ảnh đại diện...', 'info');
+      const optimizedResult = await optimizeImageFile(file, { maxDimension: 500, quality: 0.8 });
+      setEditAvatar(optimizedResult.dataUrl);
+      showToast('Tải ảnh đại diện thành công!', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Không thể tải ảnh lên.', 'error');
+    }
+  };
 
   // Guest view if no user
   if (!user || !profile) {
@@ -569,12 +587,24 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </div>
 
               {postedRecipes.map((recipe) => (
-                <RecipeCard
-                  key={recipe.id}
-                  recipe={{ ...recipe, isSaved: savedRecipeIds.includes(recipe.id) }}
-                  onSelect={onSelectRecipe}
-                  onToggleFavorite={onToggleFavorite}
-                />
+                <div key={recipe.id} className="relative group/recipe-card">
+                  <RecipeCard
+                    recipe={{ ...recipe, isSaved: savedRecipeIds.includes(recipe.id) }}
+                    onSelect={onSelectRecipe}
+                    onToggleFavorite={onToggleFavorite}
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setRecipeToChangeImage(recipe);
+                    }}
+                    className="absolute top-2.5 right-12 z-20 px-2.5 py-1 rounded-full bg-white/90 hover:bg-white text-[#a33e07] shadow-md border border-[#EAE0D5] hover:scale-105 transition-all cursor-pointer flex items-center gap-1 text-[11px] font-bold"
+                    title="Thay đổi ảnh món ăn từ máy tính"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Đổi ảnh</span>
+                  </button>
+                </div>
               ))}
             </div>
           </div>
@@ -994,13 +1024,50 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <div>
                 <label className="text-xs font-bold text-[#2B2118] block mb-2">Chọn ảnh đại diện</label>
                 <div className="flex items-center gap-2.5 overflow-x-auto pb-2">
+                  {/* Upload Avatar from Device */}
+                  <label className="w-12 h-12 rounded-full border-2 border-dashed border-[#a33e07] hover:bg-[#FFF0E6] flex flex-col items-center justify-center cursor-pointer shrink-0 transition-all text-[#a33e07]" title="Tải ảnh đại diện từ máy tính">
+                    <Camera className="w-4 h-4" />
+                    <span className="text-[8px] font-bold mt-0.5">Từ máy</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/jpg,image/heic"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          try {
+                            const res = await optimizeImageFile(file, { maxDimension: 400, quality: 0.85 });
+                            setEditAvatar(res.dataUrl);
+                            showToast('Đã tải ảnh đại diện từ máy tính! Nhớ bấm Lưu thay đổi.', 'success');
+                          } catch (err: any) {
+                            showToast(err.message || 'Lỗi xử lý ảnh đại diện', 'error');
+                          }
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {/* Custom uploaded avatar preview if not in presets */}
+                  {editAvatar && !AVATAR_OPTIONS.includes(editAvatar) && (
+                    <div className="relative shrink-0">
+                      <img
+                        src={editAvatar}
+                        alt="Ảnh đại diện tùy chỉnh"
+                        className="w-12 h-12 rounded-full object-cover ring-3 ring-[#a33e07] scale-105 shadow-md"
+                      />
+                      <span className="absolute -top-1 -right-1 bg-emerald-600 text-white rounded-full p-0.5">
+                        <Check className="w-2.5 h-2.5" />
+                      </span>
+                    </div>
+                  )}
+
                   {AVATAR_OPTIONS.map((imgUrl) => (
                     <img
                       key={imgUrl}
                       src={imgUrl}
                       alt="Tùy chọn ảnh đại diện"
                       onClick={() => setEditAvatar(imgUrl)}
-                      className={`w-12 h-12 rounded-full object-cover cursor-pointer transition-all ${
+                      className={`w-12 h-12 rounded-full object-cover cursor-pointer transition-all shrink-0 ${
                         editAvatar === imgUrl
                           ? 'ring-3 ring-[#a33e07] scale-105 shadow-md'
                           : 'opacity-70 hover:opacity-100 border border-[#EAE0D5]'
@@ -1116,7 +1183,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </div>
         </div>
       )}
-
+      {/* Modal Thay Đổi Ảnh Món Ăn Cho Thành Viên */}
+      <ChangeDishImageModal
+        isOpen={!!recipeToChangeImage}
+        onClose={() => setRecipeToChangeImage(null)}
+        recipe={recipeToChangeImage}
+        onImageUpdated={(newUrl, updated) => {
+          if (recipeToChangeImage) {
+            recipeToChangeImage.image = newUrl;
+          }
+          window.dispatchEvent(new Event('profileUpdated'));
+        }}
+      />
     </div>
   );
 };

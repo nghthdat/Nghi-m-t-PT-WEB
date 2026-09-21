@@ -3,10 +3,11 @@ import {
   ArrowLeft, Upload, Plus, Trash2, Sparkles, CheckCircle2, 
   AlertCircle, ChefHat, Flame, Clock, Users, Tag, Image as ImageIcon,
   LogIn, User as UserIcon, Camera, Download, Link2, RefreshCw, 
-  Wand2, X, Check, FileImage, Sparkle, Loader2, AlertTriangle, Search
+  Wand2, X, Check, FileImage, Sparkle, Loader2, AlertTriangle, Search, Layers
 } from 'lucide-react';
 import { Recipe, PendingRecipe, AiReviewResponse } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { optimizeImageFile, formatFileSize } from '../lib/imageOptimization';
 
 interface SubmitRecipeScreenProps {
   onBack: () => void;
@@ -22,53 +23,16 @@ const PRESET_IMAGES = [
   { label: 'Canh chua cá lóc', url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80' }
 ];
 
-// Helper to compress and format image on client before submit
-function compressImageFile(file: File): Promise<{ dataUrl: string; sizeKb: number; fileName: string }> {
-  return new Promise((resolve, reject) => {
-    if (!file.type.startsWith('image/')) {
-      return reject(new Error('Vui lòng chọn tệp hình ảnh (JPG, PNG, WebP).'));
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_DIM = 1200;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height && width > MAX_DIM) {
-          height = Math.round((height * MAX_DIM) / width);
-          width = MAX_DIM;
-        } else if (height > MAX_DIM) {
-          width = Math.round((width * MAX_DIM) / height);
-          height = MAX_DIM;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          const fallbackUrl = e.target?.result as string;
-          return resolve({
-            dataUrl: fallbackUrl,
-            sizeKb: Math.round(file.size / 1024),
-            fileName: file.name
-          });
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        const sizeKb = Math.round((dataUrl.length * 3) / 4 / 1024);
-        resolve({ dataUrl, sizeKb, fileName: file.name });
-      };
-      img.onerror = () => reject(new Error('Không thể đọc dữ liệu hình ảnh.'));
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = () => reject(new Error('Lỗi khi đọc tệp từ thiết bị.'));
-    reader.readAsDataURL(file);
-  });
+// Helper to compress and format image on client before submit using canvas and WebP/JPEG
+async function compressImageFile(file: File): Promise<{ dataUrl: string; sizeKb: number; originalKb: number; reductionPercent: number; fileName: string }> {
+  const result = await optimizeImageFile(file, { maxDimension: 1280, quality: 0.82 });
+  return {
+    dataUrl: result.dataUrl,
+    sizeKb: Math.round(result.optimizedSize / 1024),
+    originalKb: Math.round(result.originalSize / 1024),
+    reductionPercent: result.reductionPercent,
+    fileName: result.fileName
+  };
 }
 
 export const SubmitRecipeScreen: React.FC<SubmitRecipeScreenProps> = ({
@@ -80,6 +44,7 @@ export const SubmitRecipeScreen: React.FC<SubmitRecipeScreenProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState(PRESET_IMAGES[0].url);
+  const [gallery, setGallery] = useState<string[]>([]);
   const [servings, setServings] = useState('4 Người');
   const [prepTime, setPrepTime] = useState('30 Phút');
   const [ingredients, setIngredients] = useState<Array<{ name: string; amount: string }>>([
@@ -87,7 +52,7 @@ export const SubmitRecipeScreen: React.FC<SubmitRecipeScreenProps> = ({
     { name: 'Cần tây', amount: '2 cây' },
     { name: 'Tỏi băm, hạt nêm', amount: 'Vừa đủ' }
   ]);
-  const [steps, setSteps] = useState<Array<{ title: string; description: string }>>([
+  const [steps, setSteps] = useState<Array<{ title: string; description: string; image?: string }>>([
     { title: 'Sơ chế nguyên liệu', description: 'Thịt bò thái mỏng ướp tỏi và gia vị trong 15 phút. Cần tây rửa sạch cắt khúc.' },
     { title: 'Xào nhanh lửa lớn', description: 'Phi thơm tỏi, xào thịt bò chín tái rồi trút ra. Xào cần tây vừa chín tới rồi cho thịt bò vào đảo đều, tắt bếp.' }
   ]);
@@ -95,7 +60,7 @@ export const SubmitRecipeScreen: React.FC<SubmitRecipeScreenProps> = ({
 
   // Image source modes: 'upload' | 'ai' | 'presets' | 'url'
   const [imageMode, setImageMode] = useState<'upload' | 'ai' | 'presets' | 'url'>('upload');
-  const [uploadedInfo, setUploadedInfo] = useState<{ fileName: string; sizeKb: number } | null>(null);
+  const [uploadedInfo, setUploadedInfo] = useState<{ fileName: string; sizeKb: number; originalKb?: number; reductionPercent?: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -131,7 +96,12 @@ export const SubmitRecipeScreen: React.FC<SubmitRecipeScreenProps> = ({
     try {
       const result = await compressImageFile(file);
       setImageUrl(result.dataUrl);
-      setUploadedInfo({ fileName: result.fileName, sizeKb: result.sizeKb });
+      setUploadedInfo({ 
+        fileName: result.fileName, 
+        sizeKb: result.sizeKb,
+        originalKb: result.originalKb,
+        reductionPercent: result.reductionPercent
+      });
       setAiGeneratedSuccess(false);
     } catch (err: any) {
       alert(err.message || 'Lỗi khi xử lý hình ảnh.');
@@ -245,10 +215,47 @@ export const SubmitRecipeScreen: React.FC<SubmitRecipeScreenProps> = ({
     setSteps(steps.filter((_, i) => i !== index));
   };
 
-  const handleStepChange = (index: number, field: 'title' | 'description', value: string) => {
+  const handleStepChange = (index: number, field: 'title' | 'description' | 'image', value: string) => {
     const updated = [...steps];
-    updated[index][field] = value;
+    updated[index] = { ...updated[index], [field]: value };
     setSteps(updated);
+  };
+
+  const handleStepImageUpload = async (stepIndex: number, file: File) => {
+    try {
+      const result = await optimizeImageFile(file, { maxDimension: 800, quality: 0.8 });
+      const updated = [...steps];
+      updated[stepIndex] = { ...updated[stepIndex], image: result.dataUrl };
+      setSteps(updated);
+    } catch (err: any) {
+      alert(err.message || 'Lỗi khi xử lý ảnh bước nấu ăn.');
+    }
+  };
+
+  const handleRemoveStepImage = (stepIndex: number) => {
+    const updated = [...steps];
+    delete updated[stepIndex].image;
+    setSteps(updated);
+  };
+
+  // Upload multiple gallery images from device
+  const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const result = await optimizeImageFile(files[i], { maxDimension: 1200, quality: 0.82 });
+        setGallery(prev => [...prev, result.dataUrl]);
+      } catch (err: any) {
+        console.error('Lỗi khi nén ảnh bổ sung:', err);
+      }
+    }
+    if (e.target) e.target.value = '';
+  };
+
+  const handleRemoveGalleryImage = (index: number) => {
+    setGallery(prev => prev.filter((_, i) => i !== index));
   };
 
   const toggleTag = (tag: string) => {
@@ -346,6 +353,7 @@ export const SubmitRecipeScreen: React.FC<SubmitRecipeScreenProps> = ({
         title: title.trim(),
         description: description.trim(),
         image: imageUrl,
+        gallery,
         ingredients: validIngredients,
         steps: validSteps,
         categories: selectedTags,
@@ -611,16 +619,19 @@ export const SubmitRecipeScreen: React.FC<SubmitRecipeScreenProps> = ({
                     </div>
 
                     {uploadedInfo && (
-                      <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs">
+                      <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-wrap items-center justify-between gap-2 text-xs">
                         <div className="flex items-center gap-2 text-emerald-800 font-semibold truncate">
                           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                           <span className="truncate">{uploadedInfo.fileName}</span>
-                          <span className="text-[11px] text-emerald-600 font-normal shrink-0">({uploadedInfo.sizeKb} KB)</span>
+                          <span className="text-[11px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-bold shrink-0">
+                            {uploadedInfo.sizeKb} KB
+                            {uploadedInfo.reductionPercent ? ` (giảm ${uploadedInfo.reductionPercent}%)` : ''}
+                          </span>
                         </div>
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 underline shrink-0 ml-2"
+                          className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 underline shrink-0 ml-2 cursor-pointer"
                         >
                           Đổi ảnh khác
                         </button>
@@ -826,6 +837,62 @@ export const SubmitRecipeScreen: React.FC<SubmitRecipeScreenProps> = ({
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Multi-Image Gallery Upload Section */}
+            <div className="pt-3 border-t border-[#EAE0D5] space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <label className="text-xs font-bold text-[#2B2118] flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-[#a33e07]" />
+                    Bộ sưu tập ảnh món ăn (Tải nhiều ảnh từ máy)
+                  </label>
+                  <p className="text-[11px] text-[#8C7D6F]">Tải thêm ảnh thành phẩm, các góc chụp khác. Bạn có thể chọn ảnh bất kỳ làm ảnh bìa.</p>
+                </div>
+                <label className="px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#a33e07] border border-orange-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all">
+                  <Upload className="w-3.5 h-3.5" />
+                  + Thêm ảnh từ máy
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,image/jpg,image/heic"
+                    onChange={handleGalleryUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {gallery.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5 pt-1">
+                  {gallery.map((gUrl, gIdx) => (
+                    <div key={gIdx} className="relative aspect-[4/3] rounded-xl overflow-hidden border border-[#EAE0D5] bg-white group shadow-2xs">
+                      <img src={gUrl} alt={`Ảnh bổ sung ${gIdx + 1}`} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const oldMain = imageUrl;
+                            setImageUrl(gUrl);
+                            setGallery(prev => prev.map((img, i) => i === gIdx ? oldMain : img));
+                          }}
+                          className="px-2 py-1 rounded bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold cursor-pointer"
+                          title="Đổi ảnh này thành ảnh bìa chính"
+                        >
+                          Làm bìa
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveGalleryImage(gIdx)}
+                          className="p-1 rounded bg-rose-600 hover:bg-rose-700 text-white text-[10px] cursor-pointer"
+                          title="Xóa ảnh này"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1079,6 +1146,61 @@ export const SubmitRecipeScreen: React.FC<SubmitRecipeScreenProps> = ({
                   className="w-full text-xs p-2 rounded-lg bg-white border border-[#EAE0D5] focus:outline-[#a33e07]"
                   required
                 />
+
+                {/* Step Image Upload from Device */}
+                <div className="pt-1">
+                  {st.image ? (
+                    <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-[#EAE0D5]">
+                      <img
+                        src={st.image}
+                        alt={`Ảnh bước ${idx + 1}`}
+                        className="w-16 h-12 object-cover rounded-lg border border-[#EAE0D5] shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>Đã thêm ảnh minh họa (tự động nén tối ưu)</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <label className="text-[11px] text-[#a33e07] hover:underline font-bold cursor-pointer">
+                            Đổi ảnh khác
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp,image/jpg,image/heic"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleStepImageUpload(idx, file);
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                          <span className="text-[#D1C2B4]">•</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveStepImage(idx)}
+                            className="text-[11px] text-rose-600 hover:underline font-bold cursor-pointer"
+                          >
+                            Xóa ảnh này
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-dashed border-[#D1C2B4] hover:border-[#a33e07] bg-white hover:bg-[#FFF8F0] text-[11px] font-bold text-[#6B5D4F] hover:text-[#a33e07] cursor-pointer transition-all">
+                      <Camera className="w-3.5 h-3.5 text-[#a33e07]" />
+                      <span>Thêm ảnh minh họa bước này (từ máy)</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/jpg,image/heic"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleStepImageUpload(idx, file);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
               </div>
             ))}
           </div>

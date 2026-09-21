@@ -533,6 +533,37 @@ async function startServer() {
     res.json({ success: true, data: recipe, comments, reviews: reviewsStore[recipe.id] || [] });
   });
 
+  // 2.1 Update recipe image / gallery (Thay đổi ảnh món ăn)
+  app.put('/api/recipes/:id/image', (req, res) => {
+    try {
+      const { id } = req.params;
+      const { image, gallery } = req.body;
+
+      if (!image && !gallery) {
+        return res.status(400).json({ success: false, error: 'Vui lòng cung cấp hình ảnh mới.' });
+      }
+
+      const recipeIndex = recipesStore.findIndex(r => r.id === id);
+      if (recipeIndex === -1) {
+        const pendingIndex = pendingStore.findIndex(r => r.id === id);
+        if (pendingIndex !== -1) {
+          if (image) pendingStore[pendingIndex].image = image;
+          if (gallery) pendingStore[pendingIndex].gallery = gallery;
+          return res.json({ success: true, message: 'Đã cập nhật ảnh món ăn thành công!', data: pendingStore[pendingIndex] });
+        }
+        return res.status(404).json({ success: false, error: 'Không tìm thấy món ăn để thay đổi ảnh.' });
+      }
+
+      if (image) recipesStore[recipeIndex].image = image;
+      if (gallery) recipesStore[recipeIndex].gallery = gallery;
+
+      res.json({ success: true, message: 'Đã cập nhật ảnh món ăn thành công!', data: recipesStore[recipeIndex] });
+    } catch (err: any) {
+      console.error('Lỗi khi cập nhật ảnh món ăn:', err);
+      res.status(500).json({ success: false, error: err.message || 'Lỗi xử lý thay đổi ảnh.' });
+    }
+  });
+
   // Get comments for recipe
   app.get('/api/recipes/:id/comments', (req, res) => {
     const recipeId = req.params.id;
@@ -583,11 +614,11 @@ async function startServer() {
 ${JSON.stringify(recipeCatalog, null, 2)}
 
 Nhiệm vụ:
-1. TUYỆT ĐỐI CHỈ TRẢ VỀ các công thức có chứa TRỰC TIẾP nguyên liệu/từ khóa mà người dùng đã nhập.
-2. KHÔNG SUY DIỄN: Nếu người dùng nhập "thịt", chỉ khớp với công thức có chứa nguyên liệu có từ "thịt". Đừng tự động trả về "phở bò", "gà" trừ khi trong công thức đó có nguyên liệu tên "thịt".
-3. Nếu người dùng nhập nhiều nguyên liệu, hãy ưu tiên công thức đáp ứng được nhiều nguyên liệu nhất.
+1. Trả về các công thức phù hợp với nguyên liệu/từ khóa mà người dùng đã nhập. AI có thể suy luận thông minh (ví dụ: "Thịt bò" có thể khớp với "Thịt thăn bò lụi", "Gà" có thể khớp với "Cánh gà", v.v.).
+2. Ưu tiên công thức đáp ứng được nhiều nguyên liệu nhất.
+3. Nếu người dùng chỉ nhập một loại nguyên liệu, hãy trả về các công thức có nguyên liệu đó làm thành phần chính.
 4. KHÔNG BỊA RA công thức mới.
-5. Nếu không có công thức nào khớp hợp lý với TỪ KHÓA, hãy trả về mảng suggestions rỗng [].
+5. Nếu không có công thức nào khớp, hãy trả về mảng suggestions rỗng [].
 
 Trả về CHỈ JSON theo format sau (KHÔNG thêm markdown text):
 {
@@ -605,12 +636,15 @@ Trả về CHỈ JSON theo format sau (KHÔNG thêm markdown text):
         }
       });
 
-      const text = response.text || '{"suggestions":[]}';
+      let text = response.text || '{"suggestions":[]}';
+      // Clean up markdown json blocks if AI returns them
+      text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      
       let parsedResults: Array<{
         recipe_id?: string;
         recipeId?: string; recipe_name?: string; name?: string;
-        match_percent?: number;
-        matchPercentage?: number;
+        match_percent?: number | string;
+        matchPercentage?: number | string;
         missing_ingredients?: string[];
         missingIngredients?: string[];
         matched_ingredients?: string[];
@@ -634,7 +668,8 @@ Trả về CHỈ JSON theo format sau (KHÔNG thêm markdown text):
       for (const item of parsedResults) {
         const recipeId = item.recipe_id || item.recipeId || '';
         const recipeName = item.recipe_name || item.name || '';
-        const matchPct = item.match_percent ?? item.matchPercentage ?? 0;
+        // Parse match_percent safely to handle cases where AI returns a string like "85%"
+        let matchPct = parseInt(String(item.match_percent ?? item.matchPercentage ?? 0).replace(/\D/g, '')) || 0;
         const missing = item.missing_ingredients || item.missingIngredients || [];
         
         // Match by ID or Name to prevent AI hallucination
@@ -827,6 +862,7 @@ Trả về CHỈ JSON theo format sau (KHÔNG thêm markdown text):
         title,
         description,
         image,
+        gallery,
         ingredients,
         steps,
         categories,
@@ -1016,6 +1052,7 @@ Trả về CHỈ JSON theo format:
         title,
         description: description || 'Món ngon chia sẻ từ thành viên cộng đồng.',
         image: defaultImage,
+        gallery: Array.isArray(gallery) ? gallery : [],
         prepTime: prepTime || '25 Phút',
         servings: servings || '3-4 Người',
         difficulty: 'Dễ',
@@ -1119,19 +1156,36 @@ Trả về CHỈ JSON theo format:
     }
 
     let updatedCount = 0;
+    let capturedOldName = '';
 
-    const updateAuthor = (recipe) => {
+    const updateAuthor = (recipe: any) => {
       let changed = false;
-      if (recipe.author_uid === uid || (recipe.author && recipe.author.uid === uid)) {
-        if (name && recipe.author_name !== name) {
-          recipe.author_name = name;
-          if (recipe.author) recipe.author.name = name;
-          changed = true;
+      const isOwner = recipe.author_uid === uid || (recipe.author && recipe.author.uid === uid);
+      
+      if (isOwner) {
+        if (!capturedOldName) {
+          capturedOldName = recipe.author_name || (recipe.author && recipe.author.name) || '';
         }
-        if (avatar !== undefined && recipe.author_avatar !== avatar) {
-          recipe.author_avatar = avatar;
-          if (recipe.author) recipe.author.avatar = avatar;
-          changed = true;
+
+        if (name) {
+          if (recipe.author_name !== name) {
+            recipe.author_name = name;
+            changed = true;
+          }
+          if (recipe.author && recipe.author.name !== name) {
+            recipe.author.name = name;
+            changed = true;
+          }
+        }
+        if (avatar !== undefined) {
+          if (recipe.author_avatar !== avatar) {
+            recipe.author_avatar = avatar;
+            changed = true;
+          }
+          if (recipe.author && recipe.author.avatar !== avatar) {
+            recipe.author.avatar = avatar;
+            changed = true;
+          }
         }
       }
       return changed;
@@ -1142,20 +1196,41 @@ Trả về CHỈ JSON theo format:
     archivedStore.forEach(r => { if (updateAuthor(r)) updatedCount++; });
     rejectedStore.forEach(r => { if (updateAuthor(r)) updatedCount++; });
 
-    // Also update reviewsStore
+    // Also update reviewsStore (do not increment updatedCount for reviews per requirements)
     for (const recipeId in reviewsStore) {
       reviewsStore[recipeId].forEach(review => {
         if (review.author_uid === uid) {
           if (name && review.author_name !== name) {
             review.author_name = name;
-            updatedCount++;
           }
           if (avatar !== undefined && review.author_avatar !== avatar) {
             review.author_avatar = avatar;
-            updatedCount++;
           }
         }
       });
+    }
+
+    // Tự động ghi đè tên tác giả vào file gốc seedRecipes.ts (persistence workaround)
+    if (name && capturedOldName && capturedOldName !== name) {
+      try {
+        const seedPath = path.join(process.cwd(), 'src', 'data', 'seedRecipes.ts');
+        if (fs.existsSync(seedPath)) {
+          let content = fs.readFileSync(seedPath, 'utf8');
+          
+          const regex1 = new RegExp(`name:\\s*['"]${capturedOldName}['"]`, 'g');
+          content = content.replace(regex1, `name: '${name}'`);
+          
+          const regex2 = new RegExp(`author_name:\\s*['"]${capturedOldName}['"]`, 'g');
+          content = content.replace(regex2, `author_name: '${name}'`);
+
+          const regex3 = new RegExp(`userName:\\s*['"]${capturedOldName}['"]`, 'g');
+          content = content.replace(regex3, `userName: '${name}'`);
+
+          fs.writeFileSync(seedPath, content, 'utf8');
+        }
+      } catch (e) {
+        console.error('Lỗi cập nhật seedRecipes.ts:', e);
+      }
     }
 
     res.json({ success: true, updatedCount });

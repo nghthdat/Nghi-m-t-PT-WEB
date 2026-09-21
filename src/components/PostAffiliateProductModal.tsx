@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { ProductItem, ProductCategory } from '../types';
 import { 
   X, Plus, Image as ImageIcon, Link as LinkIcon, 
-  Tag, Store, DollarSign, Sparkles, Check, Trash2, Layers 
+  Tag, Store, DollarSign, Sparkles, Check, Trash2, Layers, UploadCloud, Camera
 } from 'lucide-react';
+import { optimizeImageFile } from '../lib/imageOptimization';
 
 interface PostAffiliateProductModalProps {
   isOpen: boolean;
@@ -72,6 +73,22 @@ export const PostAffiliateProductModal: React.FC<PostAffiliateProductModalProps>
       setImages(prev => [...prev, trimmed]);
     }
     setNewImageUrl('');
+  };
+
+  // Upload multiple images from device library
+  const handleProductFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const result = await optimizeImageFile(files[i], { maxDimension: 1000, quality: 0.82 });
+        setImages(prev => [...prev, result.dataUrl]);
+      } catch (err: any) {
+        console.error('Lỗi nén ảnh sản phẩm:', err);
+      }
+    }
+    if (e.target) e.target.value = '';
   };
 
   // Remove photo
@@ -302,6 +319,19 @@ export const PostAffiliateProductModal: React.FC<PostAffiliateProductModalProps>
                 </div>
               ))}
             </div>
+
+            {/* Upload from Device Button */}
+            <label className="flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-[#D1C2B4] hover:border-[#a33e07] bg-[#FAF5F0]/60 hover:bg-[#FFF8F0] text-xs font-bold text-[#a33e07] cursor-pointer transition-all">
+              <UploadCloud className="w-4 h-4" />
+              <span>Tải ảnh sản phẩm từ máy tính (chọn được nhiều ảnh)</span>
+              <input
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp,image/jpg,image/heic"
+                onChange={handleProductFileUpload}
+                className="hidden"
+              />
+            </label>
 
             {/* Add Image by URL */}
             <div className="flex gap-2 pt-1">
