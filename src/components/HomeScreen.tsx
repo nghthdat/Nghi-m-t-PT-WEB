@@ -111,7 +111,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             Hôm nay ăn gì đây cả nhà ơi? (Test OK)
           </h1>
 
-          <p className="text-xs sm:text-sm text-amber-100/80 max-w-lg mx-auto leading-relaxed">
+          <p className="text-xs sm:text-sm text-amber-50 max-w-lg mx-auto leading-relaxed">
             Bạn có nguyên liệu gì trong tủ lạnh? Nhập vào đây, AI sẽ gợi ý và xếp hạng món ăn phù hợp nhất!
           </p>
 
@@ -125,7 +125,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 onChange={(e) => setIngredientInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Nhập tên nguyên liệu (vd: trứng, thịt ba chỉ, cà chua...)"
-                className="w-full text-sm bg-transparent outline-none placeholder:text-[#8C7D6F] font-medium"
+                className="w-full text-sm bg-transparent outline-none placeholder:text-gray-500 placeholder:font-medium font-medium"
               />
               <button
                 type="button"
@@ -161,27 +161,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               ))}
             </div>
 
-            {/* Quick Select Tags */}
-            <div className="mt-3 pt-2.5 border-t border-[#F7F2EE] flex items-center gap-1.5 flex-wrap">
-              <span className="text-[11px] font-bold text-[#8C7D6F] shrink-0">Gợi ý nhanh:</span>
-              {POPULAR_INGREDIENTS.map((item) => {
-                const isSelected = selectedIngredients.includes(item);
-                return (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => (isSelected ? handleRemoveIngredient(item) : handleAddIngredient(item))}
-                    className={`text-[11px] font-medium px-2 py-0.5 rounded-lg transition-all ${
-                      isSelected
-                        ? 'bg-[#FFE0CC] text-[#a33e07] font-bold'
-                        : 'bg-[#F7F2EE] hover:bg-[#EAE0D5] text-[#6B5D4F]'
-                    }`}
-                  >
-                    {isSelected ? '✓ ' : '+ '}
-                    {item}
-                  </button>
-                );
-              })}
+            {/* Quick Select Tags (only ingredients not yet selected, to avoid duplicate display) */}
+            <div className="mt-3 pt-2.5 border-t border-[#F7F2EE] flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold text-[#8C7D6F] shrink-0">Gợi ý nhanh:</span>
+              {POPULAR_INGREDIENTS.filter((item) => !selectedIngredients.includes(item)).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => handleAddIngredient(item)}
+                  className="text-xs font-medium px-2.5 py-1 rounded-lg bg-[#F7F2EE] hover:bg-[#EAE0D5] text-[#6B5D4F] transition-all"
+                >
+                  + {item}
+                </button>
+              ))}
             </div>
 
             {/* Action Search Button */}
