@@ -49,7 +49,7 @@ function MainAppContent({ currentTab, setCurrentTab }: MainAppContentProps) {
   // Fetch approved recipes
   const fetchRecipes = async () => {
     try {
-      const res = await fetch('/api/recipes');
+      const res = await fetch(`/api/recipes?_t=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
       if (data.success && data.data) {
         setRecipes(data.data);
@@ -92,7 +92,7 @@ function MainAppContent({ currentTab, setCurrentTab }: MainAppContentProps) {
     if (recipeId) {
       const fetchSpecificRecipe = async () => {
         try {
-          const res = await fetch(`/api/recipes/${recipeId}`);
+          const res = await fetch(`/api/recipes/${recipeId}?_t=${Date.now()}`, { cache: 'no-store' });
           const data = await res.json();
           if (data.success && data.data) {
             setSelectedRecipe(data.data);
