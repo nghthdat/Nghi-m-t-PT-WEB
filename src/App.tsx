@@ -26,6 +26,11 @@ interface MainAppContentProps {
   setCurrentTab: (tab: string) => void;
 }
 
+// Tabs rendered by StaticPageScreen — kept as its own list so the URL sync
+// effect and the render guard below always agree on what counts as a
+// "static/policy page" tab.
+const STATIC_PAGE_TABS = ['about', 'privacy', 'terms', 'faq', 'contact', 'return-policy', 'shipping-policy', 'payment-policy'];
+
 function MainAppContent({ currentTab, setCurrentTab }: MainAppContentProps) {
   const { toast, isAdmin } = useAuth();
   const [profileInitialTab, setProfileInitialTab] = useState<'posted' | 'saved' | 'cart' | 'orders' | 'badges' | 'moderation'>('posted');
@@ -107,6 +112,32 @@ function MainAppContent({ currentTab, setCurrentTab }: MainAppContentProps) {
     }
   }, []);
 
+  // Restore a deep link to a static/policy page (e.g. shared or bookmarked
+  // "?staticPage=shipping-policy" link, or a page reload).
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const staticPage = searchParams.get('staticPage');
+    if (staticPage && STATIC_PAGE_TABS.includes(staticPage)) {
+      setCurrentTab(staticPage);
+    }
+  }, []);
+
+  // Let any component navigate to a policy page without prop-drilling
+  // setCurrentTab through every intermediate screen (mirrors the existing
+  // 'openProfileEditModal' custom-event pattern used elsewhere in the app).
+  useEffect(() => {
+    const handleNavigateToPolicy = (e: Event) => {
+      const page = (e as CustomEvent<{ page: string }>).detail?.page;
+      if (page && STATIC_PAGE_TABS.includes(page)) {
+        setSelectedRecipe(null);
+        setCurrentTab(page);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+    window.addEventListener('navigateToPolicy', handleNavigateToPolicy);
+    return () => window.removeEventListener('navigateToPolicy', handleNavigateToPolicy);
+  }, []);
+
   // Sync URL with current tab state
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -114,6 +145,11 @@ function MainAppContent({ currentTab, setCurrentTab }: MainAppContentProps) {
       url.searchParams.set('recipeId', selectedRecipe.id);
     } else {
       url.searchParams.delete('recipeId');
+    }
+    if (STATIC_PAGE_TABS.includes(currentTab)) {
+      url.searchParams.set('staticPage', currentTab);
+    } else {
+      url.searchParams.delete('staticPage');
     }
     window.history.replaceState({}, '', url.toString());
   }, [currentTab, selectedRecipe]);
@@ -313,7 +349,7 @@ function MainAppContent({ currentTab, setCurrentTab }: MainAppContentProps) {
             </div>
           )
         )}
-        {['about', 'privacy', 'terms', 'faq', 'contact'].includes(currentTab) && (
+        {STATIC_PAGE_TABS.includes(currentTab) && (
           <StaticPageScreen pageType={currentTab as any} />
         )}
       </main>

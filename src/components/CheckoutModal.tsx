@@ -532,6 +532,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
                   {paymentError}
                 </p>
               )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCheckoutOpen(false);
+                  window.dispatchEvent(new CustomEvent('navigateToPolicy', { detail: { page: 'shipping-policy' } }));
+                }}
+                className="text-[11px] font-semibold text-[#a33e07] hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <ShieldCheck className="w-3 h-3" />
+                Xem chính sách đổi trả & vận chuyển
+              </button>
             </div>
 
             {/* Order Items Preview */}

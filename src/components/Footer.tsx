@@ -289,6 +289,30 @@ export const Footer: React.FC<FooterProps> = ({ setCurrentTab }) => {
             <ul className="space-y-2.5">
               <li>
                 <button
+                  onClick={() => setCurrentTab('return-policy')}
+                  className="text-xs sm:text-sm text-[#6B5D4F] hover:text-[#a33e07] transition-colors cursor-pointer"
+                >
+                  Đổi trả & Hoàn tiền
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => setCurrentTab('shipping-policy')}
+                  className="text-xs sm:text-sm text-[#6B5D4F] hover:text-[#a33e07] transition-colors cursor-pointer"
+                >
+                  Vận chuyển & Giao hàng
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => setCurrentTab('payment-policy')}
+                  className="text-xs sm:text-sm text-[#6B5D4F] hover:text-[#a33e07] transition-colors cursor-pointer"
+                >
+                  Phương thức thanh toán
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={() => setCurrentTab('privacy')}
                   className="text-xs sm:text-sm text-[#6B5D4F] hover:text-[#a33e07] transition-colors cursor-pointer"
                 >

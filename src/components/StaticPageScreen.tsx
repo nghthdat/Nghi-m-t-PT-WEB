@@ -1,8 +1,11 @@
 import React from 'react';
-import { Shield, FileText, HelpCircle, Info, Mail, MapPin, Phone, MessageSquare } from 'lucide-react';
+import {
+  Shield, FileText, HelpCircle, Info, Mail, MapPin, Phone, MessageSquare,
+  RotateCcw, Truck, CreditCard, Banknote, QrCode, Smartphone
+} from 'lucide-react';
 
 interface StaticPageScreenProps {
-  pageType: 'about' | 'privacy' | 'terms' | 'faq' | 'contact';
+  pageType: 'about' | 'privacy' | 'terms' | 'faq' | 'contact' | 'return-policy' | 'shipping-policy' | 'payment-policy';
 }
 
 export const StaticPageScreen: React.FC<StaticPageScreenProps> = ({ pageType }) => {
@@ -162,6 +165,131 @@ export const StaticPageScreen: React.FC<StaticPageScreenProps> = ({ pageType }) 
                   </button>
                 </form>
               </div>
+            </div>
+          </div>
+        );
+      case 'return-policy':
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 border-b border-[#F7F2EE] pb-4 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-[#FFF0E6] text-[#a33e07] flex items-center justify-center">
+                <RotateCcw className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-[#2B2118]">Chính sách Đổi trả & Hoàn tiền</h2>
+                <p className="text-xs text-[#8C7D6F] mt-0.5">Áp dụng cho các dụng cụ bếp & gia vị mua tại Gian Hàng Bếp Việt</p>
+              </div>
+            </div>
+            <div className="prose prose-stone max-w-none text-[#4A3A2C]">
+              <h3>1. Điều kiện đổi trả</h3>
+              <ul>
+                <li>Thời hạn đổi trả: trong vòng <strong>7 ngày</strong> kể từ ngày nhận hàng.</li>
+                <li>Chỉ áp dụng đối với sản phẩm <strong>lỗi do nhà sản xuất</strong> (móp méo, nứt vỡ, hoạt động sai chức năng, thiếu linh kiện đi kèm...), không áp dụng với lỗi do người dùng sử dụng sai cách.</li>
+                <li>Sản phẩm đổi trả phải còn <strong>nguyên bao bì, tem mác, phụ kiện đi kèm</strong> và chưa qua sử dụng thực tế (trừ trường hợp kiểm tra lỗi).</li>
+                <li>Còn đầy đủ hóa đơn mua hàng hoặc mã đơn hàng (Mã đơn hiển thị ở email/trang xác nhận sau khi đặt hàng).</li>
+              </ul>
+
+              <h3>2. Quy trình gửi trả hàng</h3>
+              <ol>
+                <li>Liên hệ Hotline <strong>1900 1234</strong> hoặc email <strong>hotro@angihomnay.vn</strong> trong vòng 7 ngày, cung cấp mã đơn hàng và mô tả/ảnh chụp lỗi sản phẩm.</li>
+                <li>Đội ngũ hỗ trợ xác nhận yêu cầu và hướng dẫn đóng gói, gửi trả sản phẩm về kho của chúng tôi.</li>
+                <li>Sản phẩm được kiểm tra thực tế tại kho (đối chiếu với ảnh/mô tả lỗi ban đầu).</li>
+                <li>Sau khi xác nhận đúng lỗi do nhà sản xuất, chúng tôi tiến hành đổi sản phẩm mới hoặc hoàn tiền theo yêu cầu của bạn.</li>
+              </ol>
+
+              <h3>3. Thời gian hoàn tiền</h3>
+              <p>Hoàn tiền được xử lý trong vòng <strong>3-5 ngày làm việc</strong> kể từ khi sản phẩm lỗi được xác nhận tại kho, chuyển khoản về đúng tài khoản/phương thức thanh toán ban đầu của bạn (COD hoàn qua chuyển khoản ngân hàng theo thông tin bạn cung cấp).</p>
+
+              <h3>4. Trường hợp không áp dụng đổi trả</h3>
+              <ul>
+                <li>Sản phẩm hư hỏng do người dùng làm rơi vỡ, sử dụng sai hướng dẫn hoặc tự ý sửa chữa.</li>
+                <li>Sản phẩm đã qua sử dụng, mất tem mác/bao bì gốc mà không phải do lỗi nhà sản xuất.</li>
+                <li>Yêu cầu đổi trả sau thời hạn 7 ngày kể từ ngày nhận hàng.</li>
+              </ul>
+
+              <p className="text-sm text-[#8C7D6F]">Mọi thắc mắc về đổi trả, vui lòng liên hệ Hotline <strong>1900 1234</strong> (8:00 - 18:00) hoặc email <strong>hotro@angihomnay.vn</strong>.</p>
+            </div>
+          </div>
+        );
+      case 'shipping-policy':
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 border-b border-[#F7F2EE] pb-4 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-[#FFF0E6] text-[#a33e07] flex items-center justify-center">
+                <Truck className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-[#2B2118]">Chính sách Vận chuyển & Giao hàng</h2>
+                <p className="text-xs text-[#8C7D6F] mt-0.5">Áp dụng cho toàn bộ đơn hàng dụng cụ bếp & gia vị</p>
+              </div>
+            </div>
+            <div className="prose prose-stone max-w-none text-[#4A3A2C]">
+              <h3>1. Thời gian giao hàng</h3>
+              <ul>
+                <li><strong>Nội thành</strong> (các quận trung tâm TP. Hồ Chí Minh, Hà Nội và các thành phố lớn): từ <strong>1-2 ngày làm việc</strong>.</li>
+                <li><strong>Ngoại thành & các tỉnh thành khác</strong>: từ <strong>3-5 ngày làm việc</strong>.</li>
+                <li>Thời gian trên chưa bao gồm các ngày lễ, Tết hoặc điều kiện thời tiết/giao thông bất khả kháng.</li>
+              </ul>
+
+              <h3>2. Biểu phí vận chuyển</h3>
+              <ul>
+                <li><strong>Đồng giá 30.000 đ</strong> cho mọi đơn hàng trên toàn quốc.</li>
+                <li><strong>Miễn phí vận chuyển</strong> áp dụng cho đơn hàng có tổng giá trị từ <strong>300.000 đ</strong> trở lên.</li>
+                <li>Phí vận chuyển được hiển thị rõ ràng ngay tại bước Giỏ hàng & Thanh toán trước khi bạn xác nhận đặt hàng.</li>
+              </ul>
+
+              <h3>3. Quy trình đồng kiểm khi nhận hàng</h3>
+              <ol>
+                <li>Nhân viên giao hàng liên hệ trước khi giao để xác nhận thời gian nhận hàng phù hợp.</li>
+                <li>Khách hàng được <strong>đồng kiểm</strong> (mở kiện kiểm tra sản phẩm cùng nhân viên giao hàng) trước khi thanh toán (đối với đơn COD) hoặc trước khi ký nhận.</li>
+                <li>Nếu phát hiện sản phẩm sai mẫu, thiếu số lượng hoặc hư hỏng do vận chuyển, khách hàng có quyền từ chối nhận hàng ngay tại thời điểm giao và báo lại cho chúng tôi qua Hotline <strong>1900 1234</strong> để được xử lý đổi/hoàn tiền theo Chính sách Đổi trả & Hoàn tiền.</li>
+              </ol>
+
+              <h3>4. Theo dõi đơn hàng</h3>
+              <p>Sau khi đặt hàng thành công, bạn có thể theo dõi trạng thái đơn hàng tại mục <strong>Hồ sơ cá nhân → Đơn mua</strong>.</p>
+            </div>
+          </div>
+        );
+      case 'payment-policy':
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 border-b border-[#F7F2EE] pb-4 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-[#FFF0E6] text-[#a33e07] flex items-center justify-center">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-[#2B2118]">Chính sách & Phương thức Thanh toán</h2>
+                <p className="text-xs text-[#8C7D6F] mt-0.5">Áp dụng cho toàn bộ đơn hàng đặt qua trang Thanh toán (Checkout)</p>
+              </div>
+            </div>
+            <div className="prose prose-stone max-w-none text-[#4A3A2C]">
+              <p>Chúng tôi hỗ trợ 3 hình thức thanh toán dưới đây — đúng với các lựa chọn bạn sẽ thấy tại bước Thanh toán (Checkout):</p>
+
+              <h3 className="flex items-center gap-2"><Banknote className="w-5 h-5 text-[#a33e07]" /> 1. Thanh toán khi nhận hàng (COD)</h3>
+              <ul>
+                <li>Thanh toán bằng tiền mặt trực tiếp cho nhân viên giao hàng khi nhận sản phẩm.</li>
+                <li>Bạn được đồng kiểm sản phẩm trước khi thanh toán (xem thêm Chính sách Vận chuyển & Giao hàng).</li>
+                <li>Không phát sinh thêm phí thu hộ (COD).</li>
+              </ul>
+
+              <h3 className="flex items-center gap-2"><QrCode className="w-5 h-5 text-[#a33e07]" /> 2. Chuyển khoản ngân hàng qua mã QR (VietQR)</h3>
+              <ul>
+                <li>Quét mã QR hoặc chuyển khoản thủ công theo thông tin tài khoản được cung cấp ngay sau khi đặt hàng thành công.</li>
+                <li>Vui lòng ghi đúng <strong>nội dung chuyển khoản là mã đơn hàng</strong> để hệ thống tự động xác nhận trong 1-3 phút.</li>
+                <li>Đơn hàng được xử lý ngay sau khi chúng tôi xác nhận đã nhận được thanh toán.</li>
+              </ul>
+
+              <h3 className="flex items-center gap-2"><Smartphone className="w-5 h-5 text-[#a33e07]" /> 3. Thẻ / Ví điện tử (MoMo)</h3>
+              <ul>
+                <li>Thanh toán nhanh chóng qua ứng dụng Ví MoMo ngay trong bước Thanh toán.</li>
+                <li>Giao dịch được mã hoá và bảo mật theo tiêu chuẩn của đối tác thanh toán.</li>
+              </ul>
+
+              <h3>4. Lưu ý chung</h3>
+              <ul>
+                <li>Giá sản phẩm hiển thị trên website chưa bao gồm phí vận chuyển — phí vận chuyển được tính riêng theo Chính sách Vận chuyển & Giao hàng và hiển thị rõ ràng ở bước Giỏ hàng/Thanh toán trước khi bạn xác nhận đặt hàng.</li>
+                <li>Thông tin thanh toán tại trang này luôn đồng nhất với quy trình đặt hàng thực tế ở bước Checkout — nếu có bất kỳ sai lệch nào, vui lòng liên hệ Hotline <strong>1900 1234</strong> để được hỗ trợ ngay.</li>
+              </ul>
             </div>
           </div>
         );
