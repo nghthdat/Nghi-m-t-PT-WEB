@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from './../context/AuthContext';
 import { OrderCustomerInfo, Order } from '../types';
+import { formatVND } from '../lib/formatCurrency';
 import { 
   X, CheckCircle2, ShieldCheck, Truck, CreditCard, 
   Banknote, QrCode, Smartphone, ArrowLeft, Copy, Check 
@@ -167,7 +168,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
 
               <div className="flex items-center justify-between pt-2 border-t border-[#EAE0D5] text-sm font-black text-[#2B2118]">
                 <span>Tổng giá trị đơn:</span>
-                <span className="text-[#a33e07] text-base">{completedOrder.total.toLocaleString('vi-VN')}₫</span>
+                <span className="text-[#a33e07] text-base">{formatVND(completedOrder.total)}</span>
               </div>
             </div>
 
@@ -203,7 +204,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#8C7D6F]">Số tiền:</span>
-                    <span className="font-bold text-[#a33e07]">{completedOrder.total.toLocaleString('vi-VN')}₫</span>
+                    <span className="font-bold text-[#a33e07]">{formatVND(completedOrder.total)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#8C7D6F]">Nội dung:</span>
@@ -429,7 +430,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
                       {item.quantity}x {item.product.name} {item.selectedOption ? `(${item.selectedOption})` : ''}
                     </span>
                     <span className="font-bold text-[#2B2118] shrink-0">
-                      {(item.product.price * item.quantity).toLocaleString('vi-VN')}₫
+                      {formatVND(item.product.price * item.quantity)}
                     </span>
                   </div>
                 ))}
@@ -440,23 +441,23 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
             <div className="p-4 rounded-2xl bg-[#FFF8F0] border border-[#FFE0CC] space-y-1.5 text-xs">
               <div className="flex justify-between text-[#6B5D4F]">
                 <span>Tạm tính:</span>
-                <span className="font-semibold text-[#2B2118]">{subtotal.toLocaleString('vi-VN')}₫</span>
+                <span className="font-semibold text-[#2B2118]">{formatVND(subtotal)}</span>
               </div>
               {discountAmount > 0 && (
                 <div className="flex justify-between text-emerald-700">
                   <span>Mã giảm giá ({appliedCoupon?.code}):</span>
-                  <span className="font-bold">-{discountAmount.toLocaleString('vi-VN')}₫</span>
+                  <span className="font-bold">-{formatVND(discountAmount)}</span>
                 </div>
               )}
               <div className="flex justify-between text-[#6B5D4F]">
                 <span>Phí vận chuyển:</span>
                 <span className="font-semibold text-[#2B2118]">
-                  {shippingFee === 0 ? <span className="text-emerald-700 font-bold">Miễn phí</span> : `${shippingFee.toLocaleString('vi-VN')}₫`}
+                  {shippingFee === 0 ? <span className="text-emerald-700 font-bold">Miễn phí</span> : formatVND(shippingFee)}
                 </span>
               </div>
               <div className="flex justify-between items-baseline pt-2 border-t border-[#EAE0D5] text-sm font-black text-[#2B2118]">
                 <span>Tổng thanh toán:</span>
-                <span className="text-lg text-[#a33e07]">{finalTotal.toLocaleString('vi-VN')}₫</span>
+                <span className="text-lg text-[#a33e07]">{formatVND(finalTotal)}</span>
               </div>
             </div>
 
@@ -478,7 +479,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
                 {isSubmitting ? (
                   <span>Đang xử lý đơn hàng...</span>
                 ) : (
-                  <span>Hoàn tất đặt hàng ({finalTotal.toLocaleString('vi-VN')}₫)</span>
+                  <span>Hoàn tất đặt hàng ({formatVND(finalTotal)})</span>
                 )}
               </button>
             </div>

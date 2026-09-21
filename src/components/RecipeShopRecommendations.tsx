@@ -3,6 +3,7 @@ import { Recipe, ProductItem } from '../types';
 import { INITIAL_PRODUCTS } from '../data/seedProducts';
 import { Star, Sparkles, ExternalLink, ChevronRight, Store, Tag } from 'lucide-react';
 import { ProductQuickViewModal } from './ProductQuickViewModal';
+import { formatVND } from '../lib/formatCurrency';
 
 interface RecipeShopRecommendationsProps {
   recipe: Recipe;
@@ -110,11 +111,11 @@ export const RecipeShopRecommendations: React.FC<RecipeShopRecommendationsProps>
               <div className="mt-3 pt-2 border-t border-[#F7F2EE] flex items-center justify-between gap-2">
                 <div>
                   <span className="text-xs font-black text-[#a33e07]">
-                    {prod.price.toLocaleString('vi-VN')}₫
+                    {formatVND(prod.price)}
                   </span>
                   {prod.originalPrice && prod.originalPrice > prod.price && (
                     <span className="text-[10px] text-[#A89A8D] line-through ml-1.5">
-                      {prod.originalPrice.toLocaleString('vi-VN')}₫
+                      {formatVND(prod.originalPrice)}
                     </span>
                   )}
                 </div>

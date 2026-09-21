@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { ProductItem, Recipe } from '../types';
-import { 
-  X, Star, ExternalLink, ShieldCheck, Tag, Copy, 
-  Check, ChefHat, Layers, CheckCircle2, ChevronRight 
+import {
+  X, Star, ExternalLink, ShieldCheck, Tag, Copy,
+  Check, ChefHat, Layers, CheckCircle2, ChevronRight,
+  ShoppingCart, Plus, Minus
 } from 'lucide-react';
+import { useCart } from '../context/CartContext';
+import { formatVND } from '../lib/formatCurrency';
 
 interface ProductQuickViewModalProps {
   product: ProductItem | null;
@@ -20,6 +23,8 @@ export const ProductQuickViewModal: React.FC<ProductQuickViewModalProps> = ({
 }) => {
   const [selectedImage, setSelectedImage] = useState<string>('');
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
+  const [quantity, setQuantity] = useState<number>(1);
+  const { addToCart } = useCart();
 
   // Collect all available images
   const allImages = React.useMemo(() => {
@@ -41,6 +46,7 @@ export const ProductQuickViewModal: React.FC<ProductQuickViewModalProps> = ({
     if (product) {
       setSelectedImage(allImages[0] || product.image);
       setCopiedCode(false);
+      setQuantity(1);
     }
   }, [product, allImages]);
 
@@ -270,12 +276,12 @@ export const ProductQuickViewModal: React.FC<ProductQuickViewModalProps> = ({
                   <div className="flex items-baseline gap-2 flex-wrap">
                     <span className="text-xl sm:text-2xl font-black text-[#a33e07]">
                       {product.priceMax && product.priceMax > product.price
-                        ? `${product.price.toLocaleString('vi-VN')}₫ - ${product.priceMax.toLocaleString('vi-VN')}₫`
-                        : `${product.price.toLocaleString('vi-VN')}₫`}
+                        ? `${formatVND(product.price)} - ${formatVND(product.priceMax)}`
+                        : formatVND(product.price)}
                     </span>
                     {product.originalPrice && product.originalPrice > product.price && (!product.priceMax || product.priceMax <= product.price) && (
                       <span className="text-xs text-[#A89A8D] line-through font-medium">
-                        {product.originalPrice.toLocaleString('vi-VN')}₫
+                        {formatVND(product.originalPrice)}
                       </span>
                     )}
                   </div>
@@ -319,8 +325,44 @@ export const ProductQuickViewModal: React.FC<ProductQuickViewModalProps> = ({
               )}
             </div>
 
-            {/* Direct Affiliate Link Actions */}
+            {/* Add to Cart + Direct Affiliate Link Actions */}
             <div className="pt-4 border-t border-[#F7F2EE] space-y-2.5">
+              {/* Quantity selector */}
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-bold text-[#2B2118]">Số lượng:</span>
+                <div className="flex items-center border border-[#EAE0D5] rounded-xl overflow-hidden bg-[#FAF5F0]">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="p-2 hover:bg-[#EAE0D5] text-[#6B5D4F] transition-colors cursor-pointer"
+                    title="Giảm số lượng"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <span className="w-10 text-center text-sm font-bold text-[#2B2118]">
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.min(q + 1, product.stockCount || 99))}
+                    className="p-2 hover:bg-[#EAE0D5] text-[#6B5D4F] transition-colors cursor-pointer"
+                    title="Tăng số lượng"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <button
+                id="btn-quickview-add-to-cart"
+                type="button"
+                onClick={() => addToCart(product, quantity)}
+                className="w-full py-3.5 px-5 rounded-2xl font-bold text-sm sm:text-base flex items-center justify-center gap-2.5 transition-all active:scale-98 cursor-pointer bg-[#a33e07] hover:bg-[#8c3405] text-white shadow-lg shadow-[#a33e07]/25"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                <span>Thêm vào giỏ hàng</span>
+              </button>
+
               <a
                 id="btn-quickview-affiliate-primary"
                 href={affiliateLink}
