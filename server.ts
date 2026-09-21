@@ -614,11 +614,11 @@ async function startServer() {
 ${JSON.stringify(recipeCatalog, null, 2)}
 
 Nhiệm vụ:
-1. TUYỆT ĐỐI CHỈ TRẢ VỀ các công thức có chứa TRỰC TIẾP nguyên liệu/từ khóa mà người dùng đã nhập.
-2. KHÔNG SUY DIỄN: Nếu người dùng nhập "thịt", chỉ khớp với công thức có chứa nguyên liệu có từ "thịt". Đừng tự động trả về "phở bò", "gà" trừ khi trong công thức đó có nguyên liệu tên "thịt".
-3. Nếu người dùng nhập nhiều nguyên liệu, hãy ưu tiên công thức đáp ứng được nhiều nguyên liệu nhất.
+1. Trả về các công thức phù hợp với nguyên liệu/từ khóa mà người dùng đã nhập. AI có thể suy luận thông minh (ví dụ: "Thịt bò" có thể khớp với "Thịt thăn bò lụi", "Gà" có thể khớp với "Cánh gà", v.v.).
+2. Ưu tiên công thức đáp ứng được nhiều nguyên liệu nhất.
+3. Nếu người dùng chỉ nhập một loại nguyên liệu, hãy trả về các công thức có nguyên liệu đó làm thành phần chính.
 4. KHÔNG BỊA RA công thức mới.
-5. Nếu không có công thức nào khớp hợp lý với TỪ KHÓA, hãy trả về mảng suggestions rỗng [].
+5. Nếu không có công thức nào khớp, hãy trả về mảng suggestions rỗng [].
 
 Trả về CHỈ JSON theo format sau (KHÔNG thêm markdown text):
 {
@@ -636,12 +636,15 @@ Trả về CHỈ JSON theo format sau (KHÔNG thêm markdown text):
         }
       });
 
-      const text = response.text || '{"suggestions":[]}';
+      let text = response.text || '{"suggestions":[]}';
+      // Clean up markdown json blocks if AI returns them
+      text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      
       let parsedResults: Array<{
         recipe_id?: string;
         recipeId?: string; recipe_name?: string; name?: string;
-        match_percent?: number;
-        matchPercentage?: number;
+        match_percent?: number | string;
+        matchPercentage?: number | string;
         missing_ingredients?: string[];
         missingIngredients?: string[];
         matched_ingredients?: string[];
@@ -665,7 +668,8 @@ Trả về CHỈ JSON theo format sau (KHÔNG thêm markdown text):
       for (const item of parsedResults) {
         const recipeId = item.recipe_id || item.recipeId || '';
         const recipeName = item.recipe_name || item.name || '';
-        const matchPct = item.match_percent ?? item.matchPercentage ?? 0;
+        // Parse match_percent safely to handle cases where AI returns a string like "85%"
+        let matchPct = parseInt(String(item.match_percent ?? item.matchPercentage ?? 0).replace(/\D/g, '')) || 0;
         const missing = item.missing_ingredients || item.missingIngredients || [];
         
         // Match by ID or Name to prevent AI hallucination
