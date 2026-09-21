@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, ArrowLeft, Plus, X, Clock, Flame, CheckCircle2, AlertCircle, ChefHat, Filter, RefreshCw } from 'lucide-react';
 import { Recipe, SuggestedRecipeMatch } from '../types';
 import { OptimizedImage } from './OptimizedImage';
@@ -23,6 +23,11 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
   const [ingredients, setIngredients] = useState<string[]>(currentIngredients);
   const [newIngredient, setNewIngredient] = useState('');
   const [sortBy, setSortBy] = useState<'match' | 'time' | 'calories'>('match');
+
+  // Sync local state khi parent cập nhật danh sách nguyên liệu (vd: sau khi chuyển tab rồi quay lại)
+  useEffect(() => {
+    setIngredients(currentIngredients);
+  }, [currentIngredients]);
 
   const handleAdd = (name?: string) => {
     const val = name || newIngredient.trim();
