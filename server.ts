@@ -1153,18 +1153,30 @@ Trả về CHỈ JSON theo format:
 
     let updatedCount = 0;
 
-    const updateAuthor = (recipe) => {
+    const updateAuthor = (recipe: any) => {
       let changed = false;
-      if (recipe.author_uid === uid || (recipe.author && recipe.author.uid === uid)) {
-        if (name && recipe.author_name !== name) {
-          recipe.author_name = name;
-          if (recipe.author) recipe.author.name = name;
-          changed = true;
+      const isOwner = recipe.author_uid === uid || (recipe.author && recipe.author.uid === uid);
+      
+      if (isOwner) {
+        if (name) {
+          if (recipe.author_name !== name) {
+            recipe.author_name = name;
+            changed = true;
+          }
+          if (recipe.author && recipe.author.name !== name) {
+            recipe.author.name = name;
+            changed = true;
+          }
         }
-        if (avatar !== undefined && recipe.author_avatar !== avatar) {
-          recipe.author_avatar = avatar;
-          if (recipe.author) recipe.author.avatar = avatar;
-          changed = true;
+        if (avatar !== undefined) {
+          if (recipe.author_avatar !== avatar) {
+            recipe.author_avatar = avatar;
+            changed = true;
+          }
+          if (recipe.author && recipe.author.avatar !== avatar) {
+            recipe.author.avatar = avatar;
+            changed = true;
+          }
         }
       }
       return changed;
@@ -1175,17 +1187,15 @@ Trả về CHỈ JSON theo format:
     archivedStore.forEach(r => { if (updateAuthor(r)) updatedCount++; });
     rejectedStore.forEach(r => { if (updateAuthor(r)) updatedCount++; });
 
-    // Also update reviewsStore
+    // Also update reviewsStore (do not increment updatedCount for reviews per requirements)
     for (const recipeId in reviewsStore) {
       reviewsStore[recipeId].forEach(review => {
         if (review.author_uid === uid) {
           if (name && review.author_name !== name) {
             review.author_name = name;
-            updatedCount++;
           }
           if (avatar !== undefined && review.author_avatar !== avatar) {
             review.author_avatar = avatar;
-            updatedCount++;
           }
         }
       });
