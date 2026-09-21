@@ -107,8 +107,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             AI Tìm Món Theo Nguyên Liệu Sẵn Có
           </div>
 
-          <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-white leading-tight">
-            Hôm nay ăn gì đây cả nhà ơi? (Test OK)
+          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight bg-gradient-to-r from-amber-200 via-orange-300 to-yellow-100 bg-clip-text text-transparent drop-shadow-md">
+            Hôm Nay Ăn Gì? Để Bếp Lo!
           </h1>
 
           <p className="text-xs sm:text-sm text-amber-50 max-w-lg mx-auto leading-relaxed">
