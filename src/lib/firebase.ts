@@ -1,15 +1,16 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
+import {
+  getAuth,
+  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
   updateProfile,
-  signOut, 
-  sendPasswordResetEmail, 
+  signOut,
+  sendPasswordResetEmail,
+  sendEmailVerification,
   onAuthStateChanged,
-  User 
+  User
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -425,17 +426,17 @@ export async function signInWithGoogle(): Promise<{ user: User; profile: UserPro
 }
 
 export async function registerWithEmail(
-  email: string, 
-  pass: string, 
+  email: string,
+  pass: string,
   displayName: string
-): Promise<{ user: User; profile: UserProfile }> {
+): Promise<{ user: User; profile: UserProfile; requiresVerification: boolean }> {
   const cleanEmail = email.trim().toLowerCase();
   const cleanName = displayName.trim() || cleanEmail.split('@')[0];
 
   try {
     const cred = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
     const user = cred.user;
-    
+
     if (cleanName) {
       try {
         await updateProfile(user, { displayName: cleanName });
@@ -443,16 +444,25 @@ export async function registerWithEmail(
     }
 
     const profile = await getOrCreateUserProfile(user, cleanName);
-    saveLocalRegisteredUser({
-      email: cleanEmail,
-      password: pass,
-      displayName: cleanName,
-      avatarUrl: profile.avatar_url,
-      profile
-    });
-    setUserSession(`token-${Date.now()}`, user, profile);
-    recordUserActivity();
-    return { user, profile };
+
+    // Deliberately NOT cached via saveLocalRegisteredUser here: that local
+    // cache is read by loginWithEmail's step 2 as an instant-login shortcut
+    // with no verification check, which would bypass the email-verification
+    // gate below. Real accounts must always go through the Firebase
+    // sign-in path (step 3) so `emailVerified` is enforced.
+
+    // Require email verification before granting access: send the
+    // verification email but do NOT persist a logged-in session yet.
+    // The Firebase auth session stays signed-in (with emailVerified=false)
+    // so onAuthStateChanged can keep the user gated to the "verify email"
+    // screen until they confirm, including on a later visit.
+    try {
+      await sendEmailVerification(user);
+    } catch (e) {
+      console.error('Failed to send verification email:', e);
+    }
+
+    return { user, profile, requiresVerification: true };
   } catch (err: any) {
     console.warn('Firebase createUserWithEmailAndPassword fallback to local user:', err);
     const uid = `usr_${Date.now()}`;
@@ -492,8 +502,29 @@ export async function registerWithEmail(
     });
     setUserSession(`mock-token-${Date.now()}`, fallbackUser, fallbackProfile);
     recordUserActivity();
-    return { user: fallbackUser, profile: fallbackProfile };
+    // NOTE: this degraded local-only fallback only runs when Firebase
+    // Email/Password sign-in isn't enabled on the project, so there is no
+    // real account to send a verification email to. It logs the user in
+    // immediately rather than blocking them behind an email they'll never
+    // receive.
+    return { user: fallbackUser, profile: fallbackProfile, requiresVerification: false };
   }
+}
+
+// Resend the verification email to the currently signed-in (unverified) user.
+export async function resendVerificationEmail(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Không tìm thấy phiên đăng ký. Vui lòng đăng ký lại.');
+  await sendEmailVerification(user);
+}
+
+// Reload the currently signed-in Firebase user and report whether their
+// email has been verified yet (used by the "Tôi đã xác thực" button).
+export async function reloadAndCheckEmailVerified(): Promise<boolean> {
+  const user = auth.currentUser;
+  if (!user) return false;
+  await user.reload();
+  return auth.currentUser?.emailVerified ?? false;
 }
 
 export async function loginWithEmail(
@@ -541,28 +572,52 @@ export async function loginWithEmail(
   try {
     const cred = await signInWithEmailAndPassword(auth, identifier.trim(), pass);
     const user = cred.user;
+
+    // Block access until the user has confirmed their Gmail address.
+    if (!user.emailVerified) {
+      const err: any = new Error('Tài khoản chưa được xác thực qua email. Vui lòng kiểm tra Gmail để xác nhận trước khi đăng nhập.');
+      err.code = 'auth/email-not-verified';
+      throw err;
+    }
+
     const profile = await getOrCreateUserProfile(user);
     setUserSession(`token-${Date.now()}`, user, profile);
     recordUserActivity();
     return { user, profile };
   } catch (err: any) {
+    if (err.code === 'auth/email-not-verified') throw err;
     let errMsg = 'Email/Tên đăng nhập hoặc mật khẩu không chính xác.';
     if (err.code === 'auth/user-not-found') errMsg = 'Tài khoản không tồn tại trên hệ thống.';
     if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') errMsg = 'Mật khẩu không chính xác.';
     if (err.code === 'auth/invalid-email') errMsg = 'Địa chỉ email không đúng định dạng.';
-    throw new Error(errMsg);
+    if (err.code === 'auth/too-many-requests') errMsg = 'Bạn đã thử đăng nhập sai quá nhiều lần. Vui lòng thử lại sau ít phút.';
+    const wrapped: any = new Error(errMsg);
+    wrapped.code = err.code;
+    throw wrapped;
   }
 }
 
 export async function resetPassword(email: string): Promise<void> {
+  const cleanEmail = email.trim();
+  if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+    const err: any = new Error('Địa chỉ email không đúng định dạng.');
+    err.code = 'auth/invalid-email';
+    throw err;
+  }
   try {
-    await sendPasswordResetEmail(auth, email.trim());
+    await sendPasswordResetEmail(auth, cleanEmail);
   } catch (err: any) {
     if (err.code === 'auth/operation-not-allowed' || err.message?.includes('operation-not-allowed')) {
       // Simulate success response for graceful UX
       return;
     }
-    throw err;
+    let errMsg = 'Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại.';
+    if (err.code === 'auth/user-not-found') errMsg = 'Không tìm thấy tài khoản nào đăng ký với email này.';
+    if (err.code === 'auth/invalid-email') errMsg = 'Địa chỉ email không đúng định dạng.';
+    if (err.code === 'auth/too-many-requests') errMsg = 'Bạn đã yêu cầu quá nhiều lần. Vui lòng thử lại sau ít phút.';
+    const wrapped: any = new Error(errMsg);
+    wrapped.code = err.code;
+    throw wrapped;
   }
 }
 

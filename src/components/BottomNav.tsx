@@ -18,7 +18,10 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const { totalItems } = useCart();
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-t border-[#EAE0D5] px-2 py-1.5 shadow-lg">
+    <div
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-[#EAE0D5] px-2 py-1.5 shadow-lg"
+      style={{ paddingBottom: 'max(0.375rem, env(safe-area-inset-bottom))' }}
+    >
       <div className="flex items-center justify-around">
         <button
           onClick={() => setCurrentTab('home')}

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { ProductItem } from '../types';
-import { 
-  Star, Eye, ExternalLink, Copy, Check, 
-  Layers, ChevronLeft, ChevronRight, Tag
+import {
+  Star, Eye, ExternalLink, Copy, Check,
+  Layers, ChevronLeft, ChevronRight, Tag, ShoppingCart
 } from 'lucide-react';
+import { useCart } from '../context/CartContext';
+import { formatVND } from '../lib/formatCurrency';
 
 interface ProductCardProps {
   product: ProductItem;
@@ -33,6 +35,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [copiedCode, setCopiedCode] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const { addToCart } = useCart();
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    addToCart(product, 1);
+  };
 
   const displayImage = allImages[activeImageIdx] || product.image;
   const productCode = product.productCode || `SP-${product.id.replace('prod-', '').substring(0, 8).toUpperCase()}`;
@@ -320,27 +328,39 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
 
-        {/* Price & Affiliate CTA Button */}
-        <div className="pt-2.5 border-t border-[#F7F2EE] flex items-center justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] text-[#8C7D6F] block font-medium truncate">
+        {/* Price */}
+        <div className="pt-2.5 border-t border-[#F7F2EE]">
+          <span className="text-[10px] text-[#8C7D6F] block font-medium truncate">
+            {product.priceMax && product.priceMax > product.price
+              ? `Khoảng giá trên ${platformMeta.name}:`
+              : `Giá trên ${platformMeta.name}:`}
+          </span>
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <span className="text-sm sm:text-base font-black text-[#a33e07] tracking-tight">
               {product.priceMax && product.priceMax > product.price
-                ? `Khoảng giá trên ${platformMeta.name}:`
-                : `Giá trên ${platformMeta.name}:`}
+                ? `${formatVND(product.price)} - ${formatVND(product.priceMax)}`
+                : formatVND(product.price)}
             </span>
-            <div className="flex items-baseline gap-1.5 flex-wrap">
-              <span className="text-sm sm:text-base font-black text-[#a33e07] tracking-tight">
-                {product.priceMax && product.priceMax > product.price
-                  ? `${product.price.toLocaleString('vi-VN')}₫ - ${product.priceMax.toLocaleString('vi-VN')}₫`
-                  : `${product.price.toLocaleString('vi-VN')}₫`}
+            {product.originalPrice && product.originalPrice > product.price && (!product.priceMax || product.priceMax <= product.price) && (
+              <span className="text-[11px] text-[#A89A8D] line-through font-medium">
+                {formatVND(product.originalPrice)}
               </span>
-              {product.originalPrice && product.originalPrice > product.price && (!product.priceMax || product.priceMax <= product.price) && (
-                <span className="text-[11px] text-[#A89A8D] line-through font-medium">
-                  {product.originalPrice.toLocaleString('vi-VN')}₫
-                </span>
-              )}
-            </div>
+            )}
           </div>
+        </div>
+
+        {/* Actions: Add to Cart (primary) + Affiliate Link (secondary) */}
+        <div className="flex items-center gap-2">
+          <button
+            id={`btn-add-to-cart-${product.id}`}
+            type="button"
+            onClick={handleAddToCart}
+            className="flex-1 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 bg-[#a33e07] hover:bg-[#8c3405] text-white shadow-sm shadow-[#a33e07]/30 cursor-pointer"
+            title="Thêm vào giỏ hàng"
+          >
+            <ShoppingCart className="w-3.5 h-3.5 shrink-0" />
+            <span>Thêm vào giỏ hàng</span>
+          </button>
 
           {/* Direct Affiliate Link Button to E-Commerce */}
           <a
@@ -349,10 +369,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className={`px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 shrink-0 ${platformMeta.buttonClass}`}
+            className={`px-2.5 py-2 sm:px-3 sm:py-2.5 rounded-xl font-bold text-xs flex items-center justify-center transition-all active:scale-95 shrink-0 ${platformMeta.buttonClass}`}
             title={`Chuyển đến gian hàng trên ${platformMeta.name}`}
           >
-            <span>Mua trên {platformMeta.name}</span>
             <ExternalLink className="w-3.5 h-3.5 shrink-0" />
           </a>
         </div>

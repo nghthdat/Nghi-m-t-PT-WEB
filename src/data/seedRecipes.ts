@@ -16,6 +16,7 @@ export const INITIAL_RECIPES: Recipe[] = [
       carbs: 48,
       calories: 450
     },
+    dishType: 'mon-chinh',
     categories: ['man', 'mien-bac', 'Đồ mặn', 'Miền Bắc', 'Tất cả'],
     ingredients: [
       { name: 'Xương ống bò', amount: '1 kg' },
@@ -79,6 +80,7 @@ export const INITIAL_RECIPES: Recipe[] = [
       carbs: 15,
       calories: 450
     },
+    dishType: 'mon-chinh',
     categories: ['man', 'mien-nam', 'Đồ mặn', 'Miền Nam', 'Tất cả'],
     ingredients: [
       { name: 'Thịt ba chỉ heo', amount: '500g' },
@@ -131,6 +133,7 @@ export const INITIAL_RECIPES: Recipe[] = [
       carbs: 10,
       calories: 120
     },
+    dishType: 'mon-canh',
     categories: ['quick', 'Dưới 15 phút', 'Ít calo', 'Tất cả'],
     ingredients: [
       { name: 'Cà chua', amount: '2 quả' },
@@ -179,6 +182,7 @@ export const INITIAL_RECIPES: Recipe[] = [
       carbs: 9,
       calories: 180
     },
+    dishType: 'mon-xao',
     categories: ['quick', 'Dưới 15 phút', 'Đồ mặn', 'Tất cả'],
     ingredients: [
       { name: 'Trứng gà', amount: '3 quả' },
@@ -227,6 +231,7 @@ export const INITIAL_RECIPES: Recipe[] = [
       carbs: 52,
       calories: 350
     },
+    dishType: 'mon-chinh',
     categories: ['man', 'Đồ mặn', 'Tất cả'],
     ingredients: [
       { name: 'Cơm nguội', amount: '2 chén' },
@@ -275,6 +280,7 @@ export const INITIAL_RECIPES: Recipe[] = [
       carbs: 18,
       calories: 250
     },
+    dishType: 'mon-canh',
     categories: ['man', 'mien-nam', 'Đồ mặn', 'Miền Nam', 'Ít calo', 'Tất cả'],
     ingredients: [
       { name: 'Cá diêu hồng', amount: '600g' },
@@ -324,6 +330,7 @@ export const INITIAL_RECIPES: Recipe[] = [
       carbs: 46,
       calories: 320
     },
+    dishType: 'mon-chinh',
     categories: ['chay', 'Ăn chay', 'Ít calo', 'Tất cả'],
     ingredients: [
       { name: 'Bánh phở tươi', amount: '800g' },
@@ -372,6 +379,7 @@ export const INITIAL_RECIPES: Recipe[] = [
       carbs: 18,
       calories: 520
     },
+    dishType: 'mon-xao',
     categories: ['man', 'quick', 'Đồ mặn', 'Dưới 15 phút', 'Tất cả'],
     ingredients: [
       { name: 'Thịt thăn bò', amount: '400g' },
@@ -420,6 +428,7 @@ export const INITIAL_RECIPES: Recipe[] = [
       carbs: 16,
       calories: 240
     },
+    dishType: 'mon-xao',
     categories: ['chay', 'Ăn chay', 'quick', 'Tất cả'],
     ingredients: [
       { name: 'Đậu hũ trắng', amount: '3 bìa' },
@@ -468,6 +477,7 @@ export const INITIAL_RECIPES: Recipe[] = [
       carbs: 22,
       calories: 180
     },
+    dishType: 'an-vat',
     categories: ['man', 'mien-nam', 'Ít calo', 'Miền Nam', 'Đồ mặn', 'Tất cả'],
     ingredients: [
       { name: 'Tôm sú tươi', amount: '300g' },
@@ -520,6 +530,7 @@ export const INITIAL_PENDING_RECIPES: PendingRecipe[] = [
       carbs: 6,
       calories: 380
     },
+    dishType: 'mon-chinh',
     categories: ['man', 'mien-bac', 'Đồ mặn'],
     ingredients: [
       { name: 'Thịt gà ta', amount: '1 kg' },

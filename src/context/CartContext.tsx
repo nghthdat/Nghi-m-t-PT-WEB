@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ProductItem, CartItem, CouponDiscount, OrderCustomerInfo, Order } from '../types';
 import { POPULAR_COUPONS, INITIAL_PRODUCTS } from '../data/seedProducts';
 import { useAuth } from './AuthContext';
+import { formatVND } from '../lib/formatCurrency';
 
 interface CartContextType {
   cart: CartItem[];
@@ -195,7 +196,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (subtotal < found.minOrderValue) {
       return {
         success: false,
-        message: `Mã ${found.code} chỉ áp dụng cho đơn từ ${found.minOrderValue.toLocaleString('vi-VN')}đ.`
+        message: `Mã ${found.code} chỉ áp dụng cho đơn từ ${formatVND(found.minOrderValue)}.`
       };
     }
 

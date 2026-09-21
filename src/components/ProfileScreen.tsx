@@ -13,7 +13,9 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { REALISTIC_USERS } from '../lib/firebase';
 import { optimizeImageFile } from '../lib/imageOptimization';
+import { formatVND } from '../lib/formatCurrency';
 import { ChangeDishImageModal } from './ChangeDishImageModal';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface ProfileScreenProps {
   recipes: Recipe[];
@@ -80,6 +82,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSwitchMenuOpen, setIsSwitchMenuOpen] = useState(false);
   const [recipeToChangeImage, setRecipeToChangeImage] = useState<Recipe | null>(null);
+  const [pendingRemoveCartItem, setPendingRemoveCartItem] = useState<{ productId: string; option?: string; name: string } | null>(null);
+  const [confirmClearCart, setConfirmClearCart] = useState(false);
 
   React.useEffect(() => {
     if (initialTab) {
@@ -260,7 +264,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const xpPercentage = Math.min(Math.round((userXP / nextLevelXP) * 100), 100);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-20 animate-in fade-in duration-300">
+    <div className="max-w-4xl mx-auto space-y-6 pb-28 md:pb-12 animate-in fade-in duration-300">
       
       {/* Top Banner Card */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#EAE0D5] shadow-xs space-y-6 relative overflow-hidden">
@@ -669,8 +673,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       Danh sách sản phẩm ({totalItems})
                     </span>
                     <button
-                      onClick={clearCart}
-                      className="text-xs text-red-600 hover:text-red-700 hover:underline flex items-center gap-1 font-semibold"
+                      onClick={() => setConfirmClearCart(true)}
+                      className="text-xs text-red-600 hover:text-red-700 hover:underline flex items-center gap-1 font-semibold cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       Xóa tất cả
@@ -701,8 +705,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           )}
                           <div className="text-xs font-bold text-[#a33e07] mt-1">
                             {item.product.priceMax && item.product.priceMax > item.product.price
-                              ? `${item.product.price.toLocaleString('vi-VN')}₫ - ${item.product.priceMax.toLocaleString('vi-VN')}₫`
-                              : `${item.product.price.toLocaleString('vi-VN')}₫`}
+                              ? `${formatVND(item.product.price)} - ${formatVND(item.product.priceMax)}`
+                              : formatVND(item.product.price)}
                             <span className="text-[10px] text-[#8C7D6F] font-normal ml-1.5">
                               (trên {item.product.platformName || 'sàn'})
                             </span>
@@ -734,12 +738,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           <div className="text-right min-w-[80px]">
                             <div className="text-xs font-bold text-[#2B2118]">
                               {item.product.priceMax && item.product.priceMax > item.product.price
-                                ? `${(item.product.price * item.quantity).toLocaleString('vi-VN')}₫ - ${(item.product.priceMax * item.quantity).toLocaleString('vi-VN')}₫`
-                                : `${(item.product.price * item.quantity).toLocaleString('vi-VN')}₫`}
+                                ? `${formatVND(item.product.price * item.quantity)} - ${formatVND(item.product.priceMax * item.quantity)}`
+                                : formatVND(item.product.price * item.quantity)}
                             </div>
                             <button
-                              onClick={() => removeFromCart(item.productId, item.selectedOption)}
-                              className="text-[11px] text-red-500 hover:text-red-700 hover:underline mt-0.5"
+                              onClick={() => setPendingRemoveCartItem({ productId: item.productId, option: item.selectedOption, name: item.product.name })}
+                              className="text-[11px] text-red-500 hover:text-red-700 hover:underline mt-0.5 cursor-pointer"
                             >
                               Xóa
                             </button>
@@ -771,7 +775,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     <div className="space-y-2 text-xs pb-3 border-b border-[#F7F2EE]">
                       <div className="flex justify-between text-[#6B5D4F]">
                         <span>Tạm tính ({totalItems} món):</span>
-                        <span className="font-semibold text-[#2B2118]">{subtotal.toLocaleString('vi-VN')}₫</span>
+                        <span className="font-semibold text-[#2B2118]">{formatVND(subtotal)}</span>
                       </div>
 
                       <div className="flex justify-between text-[#6B5D4F]">
@@ -782,7 +786,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
                     <div className="flex justify-between items-center text-sm font-bold">
                       <span className="text-[#2B2118]">Tổng giá trị trên sàn:</span>
-                      <span className="text-lg text-[#a33e07] font-black">{subtotal.toLocaleString('vi-VN')}₫</span>
+                      <span className="text-lg text-[#a33e07] font-black">{formatVND(subtotal)}</span>
                     </div>
 
                     <button
@@ -809,6 +813,30 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             )}
           </div>
         )}
+
+        {/* Cart destructive-action confirmations */}
+        <ConfirmDialog
+          isOpen={!!pendingRemoveCartItem}
+          title="Xoá sản phẩm khỏi giỏ hàng?"
+          message={pendingRemoveCartItem ? `Bạn có chắc muốn xoá "${pendingRemoveCartItem.name}" khỏi giỏ hàng không?` : ''}
+          confirmLabel="Xoá sản phẩm"
+          onConfirm={() => {
+            if (pendingRemoveCartItem) removeFromCart(pendingRemoveCartItem.productId, pendingRemoveCartItem.option);
+            setPendingRemoveCartItem(null);
+          }}
+          onCancel={() => setPendingRemoveCartItem(null)}
+        />
+        <ConfirmDialog
+          isOpen={confirmClearCart}
+          title="Xoá tất cả sản phẩm?"
+          message="Toàn bộ sản phẩm trong giỏ hàng sẽ bị xoá. Hành động này không thể hoàn tác."
+          confirmLabel="Xoá tất cả"
+          onConfirm={() => {
+            clearCart();
+            setConfirmClearCart(false);
+          }}
+          onCancel={() => setConfirmClearCart(false)}
+        />
 
         {/* Tab: Orders */}
         {activeTab === 'orders' && (
@@ -885,7 +913,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                             </div>
                           </div>
                           <span className="font-bold text-[#2B2118] shrink-0">
-                            {(item.price * item.quantity).toLocaleString('vi-VN')}₫
+                            {formatVND(item.price * item.quantity)}
                           </span>
                         </div>
                       ))}
@@ -899,7 +927,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       <div className="flex items-center gap-1.5">
                         <span className="text-[#8C7D6F]">Tổng thanh toán:</span>
                         <span className="font-black text-sm text-[#a33e07]">
-                          {order.total.toLocaleString('vi-VN')}₫
+                          {formatVND(order.total)}
                         </span>
                       </div>
                     </div>

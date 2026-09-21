@@ -1,10 +1,22 @@
-import React, { useState } from 'react';
-import { Search, Sparkles, X, Plus, Flame, Filter, ChefHat, ArrowRight, Utensils, Store, ShoppingBag, ShieldCheck, Truck, Compass, BookOpen } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Sparkles, X, Plus, Flame, Filter, ChefHat, ArrowRight, Utensils, Store, ShoppingBag, ShieldCheck, Truck, Compass, BookOpen, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { Recipe } from '../types';
 import { RecipeCard } from './RecipeCard';
 import { MealDecisionWheel } from './MealDecisionWheel';
 import { DailyCookingStreak } from './DailyCookingStreak';
 import { KitchenTipsCard } from './KitchenTipsCard';
+import {
+  DISH_TYPES,
+  TIME_BUCKETS,
+  SORT_OPTIONS,
+  RecipeFilterState,
+  DEFAULT_FILTER_STATE,
+  filterRecipes,
+  sortRecipes,
+  getIngredientOptions,
+  readFilterStateFromURL,
+  writeFilterStateToURL
+} from '../lib/recipeFilters';
 
 interface HomeScreenProps {
   recipes: Recipe[];
@@ -27,15 +39,7 @@ const POPULAR_INGREDIENTS = [
   'Cá diêu hồng'
 ];
 
-const CATEGORIES = [
-  { id: 'all', label: 'Tất cả' },
-  { id: 'chay', label: 'Ăn chay' },
-  { id: 'man', label: 'Đồ mặn' },
-  { id: 'quick', label: 'Dưới 15 phút' },
-  { id: 'low-cal', label: 'Ít calo' },
-  { id: 'mien-bac', label: 'Miền Bắc' },
-  { id: 'mien-nam', label: 'Miền Nam' }
-];
+const PAGE_SIZE = 9;
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   recipes,
@@ -47,8 +51,32 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   const [ingredientInput, setIngredientInput] = useState('');
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>(['Trứng gà', 'Cà chua']);
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [searchFilter, setSearchFilter] = useState('');
+
+  // Recipe listing filter/sort/pagination state — initialized from the URL
+  // so it survives a remount (e.g. viewing a recipe detail then going back).
+  const [filters, setFilters] = useState<RecipeFilterState>(() => readFilterStateFromURL());
+
+  // Keep the URL search params mirrored to the current filter state.
+  useEffect(() => {
+    writeFilterStateToURL(filters);
+  }, [filters]);
+
+  const updateFilters = (updates: Partial<Omit<RecipeFilterState, 'page'>>) => {
+    setFilters((prev) => ({ ...prev, ...updates, page: 1 }));
+  };
+
+  const handleResetFilters = () => {
+    setFilters(DEFAULT_FILTER_STATE);
+  };
+
+  const hasActiveFilters =
+    filters.dishType !== DEFAULT_FILTER_STATE.dishType ||
+    filters.time !== DEFAULT_FILTER_STATE.time ||
+    filters.ingredient !== DEFAULT_FILTER_STATE.ingredient ||
+    filters.sort !== DEFAULT_FILTER_STATE.sort ||
+    filters.search.trim() !== '';
+
+  const ingredientOptions = useMemo(() => getIngredientOptions(recipes), [recipes]);
 
   const handleAddIngredient = (item?: string) => {
     const target = item || ingredientInput.trim();
@@ -73,25 +101,34 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     onSearchWithIngredients(selectedIngredients);
   };
 
-  // Filter recipes
-  const filteredRecipes = recipes.filter(recipe => {
-    const matchesCategory = selectedCategory === 'all' || recipe.categories.some(cat => {
-      const c = cat.toLowerCase();
-      if (selectedCategory === 'chay') return c.includes('chay') || c.includes('ăn chay');
-      if (selectedCategory === 'man') return c.includes('mặn') || c.includes('đồ mặn');
-      if (selectedCategory === 'quick') return c.includes('15') || c.includes('quick');
-      if (selectedCategory === 'low-cal') return c.includes('calo') || recipe.calories <= 300;
-      if (selectedCategory === 'mien-bac') return c.includes('bắc');
-      if (selectedCategory === 'mien-nam') return c.includes('nam');
-      return true;
-    });
+  // Filter + sort recipes (accurate, deterministic — recomputed only when
+  // the source data or the active filters actually change).
+  const filteredRecipes = useMemo(
+    () => sortRecipes(filterRecipes(recipes, filters), filters.sort),
+    [recipes, filters]
+  );
 
-    const matchesSearch = !searchFilter.trim() || 
-      recipe.title.toLowerCase().includes(searchFilter.toLowerCase()) ||
-      recipe.ingredients.some(i => i.name.toLowerCase().includes(searchFilter.toLowerCase()));
+  const totalPages = Math.max(1, Math.ceil(filteredRecipes.length / PAGE_SIZE));
+  const currentPage = Math.min(filters.page, totalPages);
 
-    return matchesCategory && matchesSearch;
-  });
+  // If the active page becomes out of range (e.g. a filter just shrank the
+  // result set), snap it back so the URL and UI stay in sync.
+  useEffect(() => {
+    if (filters.page > totalPages) {
+      setFilters((prev) => ({ ...prev, page: totalPages }));
+    }
+  }, [filters.page, totalPages]);
+
+  const paginatedRecipes = filteredRecipes.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  const goToPage = (page: number) => {
+    const clamped = Math.min(Math.max(1, page), totalPages);
+    setFilters((prev) => ({ ...prev, page: clamped }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className="space-y-8 pb-20">
@@ -203,39 +240,101 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <DailyCookingStreak />
       </section>
 
-      {/* Category Pills Filter */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
+      {/* Filter & Sort Toolbar */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <h2 className="text-lg font-bold text-[#2B2118] flex items-center gap-2">
             <span className="w-2 h-5 bg-[#a33e07] rounded-full" />
-            Khám phá theo danh mục
+            Bộ lọc & sắp xếp công thức
           </h2>
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8C7D6F]" />
             <input
               type="text"
               placeholder="Tìm theo tên món..."
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value)}
+              value={filters.search}
+              onChange={(e) => updateFilters({ search: e.target.value })}
               className="pl-8 pr-3 py-1.5 text-xs rounded-xl bg-white border border-[#EAE0D5] focus:outline-[#a33e07] w-40 sm:w-56"
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all ${
-                selectedCategory === cat.id
-                  ? 'bg-[#a33e07] text-white shadow-sm shadow-[#a33e07]/20 scale-105'
-                  : 'bg-white text-[#6B5D4F] border border-[#EAE0D5] hover:border-[#D1C2B4] hover:bg-[#FDFBF7]'
-              }`}
+        <div className="flex items-end gap-2.5 flex-wrap bg-white p-3 rounded-2xl border border-[#EAE0D5]">
+          {/* Loại món */}
+          <div className="flex-1 min-w-[140px]">
+            <label className="text-[10px] font-bold text-[#8C7D6F] uppercase tracking-wide block mb-1">
+              Loại món
+            </label>
+            <select
+              value={filters.dishType}
+              onChange={(e) => updateFilters({ dishType: e.target.value as RecipeFilterState['dishType'] })}
+              className="w-full text-xs font-semibold p-2 rounded-xl bg-[#FFF8F0] border border-[#EAE0D5] focus:outline-[#a33e07] text-[#2B2118] cursor-pointer"
             >
-              {cat.label}
-            </button>
-          ))}
+              {DISH_TYPES.map((opt) => (
+                <option key={opt.id} value={opt.id}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Thời gian chế biến */}
+          <div className="flex-1 min-w-[140px]">
+            <label className="text-[10px] font-bold text-[#8C7D6F] uppercase tracking-wide block mb-1">
+              Thời gian chế biến
+            </label>
+            <select
+              value={filters.time}
+              onChange={(e) => updateFilters({ time: e.target.value as RecipeFilterState['time'] })}
+              className="w-full text-xs font-semibold p-2 rounded-xl bg-[#FFF8F0] border border-[#EAE0D5] focus:outline-[#a33e07] text-[#2B2118] cursor-pointer"
+            >
+              {TIME_BUCKETS.map((opt) => (
+                <option key={opt.id} value={opt.id}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Nguyên liệu chính */}
+          <div className="flex-1 min-w-[140px]">
+            <label className="text-[10px] font-bold text-[#8C7D6F] uppercase tracking-wide block mb-1">
+              Nguyên liệu chính
+            </label>
+            <select
+              value={filters.ingredient}
+              onChange={(e) => updateFilters({ ingredient: e.target.value })}
+              className="w-full text-xs font-semibold p-2 rounded-xl bg-[#FFF8F0] border border-[#EAE0D5] focus:outline-[#a33e07] text-[#2B2118] cursor-pointer"
+            >
+              <option value="">Mọi nguyên liệu</option>
+              {ingredientOptions.map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sắp xếp */}
+          <div className="flex-1 min-w-[140px]">
+            <label className="text-[10px] font-bold text-[#8C7D6F] uppercase tracking-wide block mb-1">
+              Sắp xếp theo
+            </label>
+            <select
+              value={filters.sort}
+              onChange={(e) => updateFilters({ sort: e.target.value as RecipeFilterState['sort'] })}
+              className="w-full text-xs font-semibold p-2 rounded-xl bg-[#FFF8F0] border border-[#EAE0D5] focus:outline-[#a33e07] text-[#2B2118] cursor-pointer"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.id} value={opt.id}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Xóa tất cả bộ lọc */}
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            disabled={!hasActiveFilters}
+            className="shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border border-[#EAE0D5] text-[#a33e07] hover:bg-[#FFF0E6] disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Xóa tất cả bộ lọc
+          </button>
         </div>
       </section>
 
@@ -261,29 +360,71 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         {filteredRecipes.length === 0 ? (
           <div className="bg-white rounded-2xl p-10 text-center border border-[#EAE0D5] space-y-3">
             <ChefHat className="w-12 h-12 text-[#8C7D6F] mx-auto stroke-1" />
-            <h3 className="font-bold text-[#2B2118]">Không tìm thấy món ăn phù hợp</h3>
+            <h3 className="font-bold text-[#2B2118]">Không tìm thấy món ăn phù hợp với bộ lọc đã chọn</h3>
             <p className="text-xs text-[#6B5D4F] max-w-sm mx-auto">
-              Hãy thử chọn danh mục khác hoặc sử dụng tính năng "Gợi ý món AI" để tìm món ăn từ nguyên liệu tủ lạnh của bạn!
+              Hãy thử đổi loại món, thời gian chế biến, nguyên liệu hoặc từ khóa tìm kiếm — hoặc dùng tính năng "Gợi ý món AI" để tìm món ăn từ nguyên liệu tủ lạnh của bạn!
             </p>
             <button
-              onClick={() => { setSelectedCategory('all'); setSearchFilter(''); }}
+              onClick={handleResetFilters}
               className="px-4 py-2 bg-[#FFF0E6] text-[#a33e07] text-xs font-bold rounded-xl"
             >
-              Xem tất cả công thức
+              Xóa bộ lọc & xem tất cả công thức
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredRecipes.map((recipe) => (
-              <RecipeCard
-                key={recipe.id}
-                recipe={recipe}
-                onSelect={onSelectRecipe}
-                onToggleFavorite={onToggleFavorite}
-                onNavigateToShop={onNavigateToShop}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {paginatedRecipes.map((recipe) => (
+                <RecipeCard
+                  key={recipe.id}
+                  recipe={recipe}
+                  onSelect={onSelectRecipe}
+                  onToggleFavorite={onToggleFavorite}
+                  onNavigateToShop={onNavigateToShop}
+                />
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-1.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  className="w-8 h-8 rounded-xl border border-[#EAE0D5] bg-white text-[#6B5D4F] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed hover:border-[#a33e07]/40 cursor-pointer"
+                  aria-label="Trang trước"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => goToPage(page)}
+                    className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      page === currentPage
+                        ? 'bg-[#a33e07] text-white shadow-sm shadow-[#a33e07]/20'
+                        : 'bg-white text-[#6B5D4F] border border-[#EAE0D5] hover:border-[#D1C2B4]'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
+                  className="w-8 h-8 rounded-xl border border-[#EAE0D5] bg-white text-[#6B5D4F] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed hover:border-[#a33e07]/40 cursor-pointer"
+                  aria-label="Trang sau"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
 

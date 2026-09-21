@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
-import { 
-  X, Trash2, ShoppingBag, Plus, Minus, ArrowRight, 
-  ExternalLink, ShieldCheck, Tag 
+import { ConfirmDialog } from './ConfirmDialog';
+import { formatVND } from '../lib/formatCurrency';
+import {
+  X, Trash2, ShoppingBag, Plus, Minus, ArrowRight,
+  ExternalLink, ShieldCheck, Tag
 } from 'lucide-react';
 
 interface CartDrawerProps {
@@ -22,6 +24,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onNavigateToShop }) => {
     removeFromCart,
     clearCart
   } = useCart();
+
+  // Pending destructive action awaiting confirmation, if any.
+  const [pendingRemove, setPendingRemove] = useState<{ productId: string; option?: string; name: string } | null>(null);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
 
   if (!isCartOpen) return null;
 
@@ -56,7 +62,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onNavigateToShop }) => {
           <div className="flex items-center gap-1">
             {cart.length > 0 && (
               <button
-                onClick={clearCart}
+                onClick={() => setConfirmClearAll(true)}
                 className="text-[11px] font-semibold text-[#8C7D6F] hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
                 title="Xoá tất cả sản phẩm"
               >
@@ -128,7 +134,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onNavigateToShop }) => {
                           {item.product.name}
                         </h4>
                         <button
-                          onClick={() => removeFromCart(item.productId, item.selectedOption)}
+                          onClick={() => setPendingRemove({ productId: item.productId, option: item.selectedOption, name: item.product.name })}
                           className="text-[#8C7D6F] hover:text-red-600 transition-colors p-0.5 cursor-pointer"
                           title="Xoá sản phẩm"
                         >
@@ -143,15 +149,37 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onNavigateToShop }) => {
                       </div>
                     </div>
 
-                    {/* Affiliate Link & Price */}
-                    <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-[#F7F2EE] gap-2">
-                      <span className="text-xs font-black text-[#a33e07]">
-                        {item.product.priceMax && item.product.priceMax > item.product.price
-                          ? `${(item.product.price * item.quantity).toLocaleString('vi-VN')}₫ - ${(item.product.priceMax * item.quantity).toLocaleString('vi-VN')}₫`
-                          : `${(item.product.price * item.quantity).toLocaleString('vi-VN')}₫`}
-                      </span>
+                    {/* Quantity Stepper */}
+                    <div className="flex items-center justify-between mt-2 gap-2">
+                      <div className="flex items-center border border-[#EAE0D5] rounded-lg overflow-hidden bg-[#FAF5F0]">
+                        <button
+                          onClick={() => updateQuantity(item.productId, item.quantity - 1, item.selectedOption)}
+                          className="p-1 hover:bg-[#EAE0D5] text-[#6B5D4F] transition-colors cursor-pointer"
+                          title="Giảm số lượng"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="w-7 text-center text-[11px] font-bold text-[#2B2118]">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => updateQuantity(item.productId, item.quantity + 1, item.selectedOption)}
+                          className="p-1 hover:bg-[#EAE0D5] text-[#6B5D4F] transition-colors cursor-pointer"
+                          title="Tăng số lượng"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
 
-                      {/* Direct Affiliate link */}
+                      <span className="text-xs font-black text-[#a33e07] shrink-0">
+                        {item.product.priceMax && item.product.priceMax > item.product.price
+                          ? `${formatVND(item.product.price * item.quantity)} - ${formatVND(item.product.priceMax * item.quantity)}`
+                          : formatVND(item.product.price * item.quantity)}
+                      </span>
+                    </div>
+
+                    {/* Affiliate Link */}
+                    <div className="flex items-center justify-end mt-2 pt-1.5 border-t border-[#F7F2EE]">
                       <a
                         href={affiliateUrl}
                         target="_blank"
@@ -172,11 +200,19 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onNavigateToShop }) => {
 
         {/* Footer */}
         {cart.length > 0 && (
-          <div className="p-4 sm:p-5 border-t border-[#EAE0D5] bg-[#FFFDFB] space-y-3">
+          <div
+            className="p-4 sm:p-5 border-t border-[#EAE0D5] bg-[#FFFDFB] space-y-3"
+            style={{ paddingBottom: 'max(1rem, calc(env(safe-area-inset-bottom) + 0.75rem))' }}
+          >
+            <div className="flex justify-between items-center text-xs text-[#6B5D4F]">
+              <span>Tổng số lượng:</span>
+              <span className="font-bold text-[#2B2118]">{totalItems} sản phẩm</span>
+            </div>
+
             <div className="flex justify-between items-baseline text-sm font-black text-[#2B2118]">
               <span>Tổng giá trị trên sàn:</span>
               <span className="text-lg text-[#a33e07]">
-                {subtotal.toLocaleString('vi-VN')}₫
+                {formatVND(subtotal)}
               </span>
             </div>
 
@@ -187,6 +223,32 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onNavigateToShop }) => {
           </div>
         )}
       </div>
+
+      {/* Remove single item confirmation */}
+      <ConfirmDialog
+        isOpen={!!pendingRemove}
+        title="Xoá sản phẩm khỏi giỏ hàng?"
+        message={pendingRemove ? `Bạn có chắc muốn xoá "${pendingRemove.name}" khỏi giỏ hàng không?` : ''}
+        confirmLabel="Xoá sản phẩm"
+        onConfirm={() => {
+          if (pendingRemove) removeFromCart(pendingRemove.productId, pendingRemove.option);
+          setPendingRemove(null);
+        }}
+        onCancel={() => setPendingRemove(null)}
+      />
+
+      {/* Clear all confirmation */}
+      <ConfirmDialog
+        isOpen={confirmClearAll}
+        title="Xoá tất cả sản phẩm?"
+        message="Toàn bộ sản phẩm trong giỏ hàng sẽ bị xoá. Hành động này không thể hoàn tác."
+        confirmLabel="Xoá tất cả"
+        onConfirm={() => {
+          clearCart();
+          setConfirmClearAll(false);
+        }}
+        onCancel={() => setConfirmClearAll(false)}
+      />
     </div>
   );
 };

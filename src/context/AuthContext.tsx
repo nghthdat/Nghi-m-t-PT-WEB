@@ -14,6 +14,8 @@ import {
   registerWithEmail,
   loginWithEmail,
   resetPassword,
+  resendVerificationEmail,
+  reloadAndCheckEmailVerified,
   setPendingUserAction,
   getPendingUserAction,
   clearPendingUserAction,
@@ -37,16 +39,19 @@ interface AuthContextType {
   savedRecipeIds: string[];
   isAuthModalOpen: boolean;
   authModalReason: string;
-  authModalMode: 'login' | 'register' | 'forgot';
+  authModalMode: 'login' | 'register' | 'forgot' | 'verify-email';
+  pendingVerificationEmail: string;
   toast: { text: string; type: 'success' | 'error' | 'info' } | null;
   openAuthModal: (options?: { reason?: string; mode?: 'login' | 'register'; pendingAction?: PendingUserAction }) => void;
   closeAuthModal: () => void;
-  setAuthModalMode: (mode: 'login' | 'register' | 'forgot') => void;
+  setAuthModalMode: (mode: 'login' | 'register' | 'forgot' | 'verify-email') => void;
   handleQuickLogin: (email: string) => Promise<boolean>;
   handleGoogleSignIn: () => Promise<boolean>;
   handleEmailLogin: (email: string, pass: string) => Promise<boolean>;
   handleEmailRegister: (email: string, pass: string, name: string) => Promise<boolean>;
   handleResetPassword: (email: string) => Promise<void>;
+  handleResendVerification: () => Promise<void>;
+  handleCheckEmailVerification: () => Promise<boolean>;
   handleSignOut: () => Promise<void>;
   toggleFavorite: (recipeId: string, recipeTitle?: string) => Promise<boolean>;
   updateProfileData: (updates: Partial<UserProfile>) => Promise<void>;
@@ -68,8 +73,9 @@ export const AuthProvider: React.FC<{
   // Auth Modal State
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalReason, setAuthModalReason] = useState('');
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'register' | 'forgot'>('login');
-  
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register' | 'forgot' | 'verify-email'>('login');
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
+
   // Toast notification
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
 
@@ -109,32 +115,49 @@ export const AuthProvider: React.FC<{
     }
   }, [showToast, onNavigateTab]);
 
+  // Activate an already-signed-in, email-verified Firebase user: loads their
+  // Firestore profile, admin status and resumes any pending action. Shared
+  // by the auth-state listener and the "I've verified" button.
+  const activateFirebaseUser = useCallback(async (firebaseUser: User) => {
+    setUser(firebaseUser);
+    try {
+      const adminCheck = await checkIsAdminUser(firebaseUser.email || '');
+      setIsAdmin(adminCheck);
+
+      const userProfile = await getOrCreateUserProfile(firebaseUser);
+      setProfile(userProfile);
+      setSavedRecipeIds(userProfile.saved_recipes || []);
+
+      if (adminCheck) {
+        const token = await firebaseUser.getIdToken();
+        setAdminSession(token, firebaseUser.email || '');
+      }
+
+      await executePendingAction(userProfile, firebaseUser);
+    } catch (err) {
+      console.error('Error loading user data:', err);
+    }
+  }, [executePendingAction]);
+
   // Auth State Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setIsLoading(true);
+      if (firebaseUser && !firebaseUser.emailVerified) {
+        // Email/password account that hasn't confirmed their Gmail yet:
+        // keep them gated out of the app and surface the verification screen.
+        setUser(null);
+        setProfile(null);
+        setIsAdmin(false);
+        setSavedRecipeIds([]);
+        setPendingVerificationEmail(firebaseUser.email || '');
+        setAuthModalMode('verify-email');
+        setIsAuthModalOpen(true);
+        setIsLoading(false);
+        return;
+      }
       if (firebaseUser) {
-        setUser(firebaseUser);
-        try {
-          // Check Admin status
-          const adminCheck = await checkIsAdminUser(firebaseUser.email || '');
-          setIsAdmin(adminCheck);
-
-          // Get or create Firestore profile
-          const userProfile = await getOrCreateUserProfile(firebaseUser);
-          setProfile(userProfile);
-          setSavedRecipeIds(userProfile.saved_recipes || []);
-
-          if (adminCheck) {
-            const token = await firebaseUser.getIdToken();
-            setAdminSession(token, firebaseUser.email || '');
-          }
-
-          // Check if there is any pending action to resume
-          await executePendingAction(userProfile, firebaseUser);
-        } catch (err) {
-          console.error('Error loading user data:', err);
-        }
+        await activateFirebaseUser(firebaseUser);
       } else {
         // Check if there is a local session from fallback auth
         const localSession = getUserSession();
@@ -165,7 +188,7 @@ export const AuthProvider: React.FC<{
       unsubscribe();
       cleanupActivity();
     };
-  }, [executePendingAction, showToast]);
+  }, [executePendingAction, showToast, activateFirebaseUser]);
 
   const openAuthModal = useCallback((options?: { 
     reason?: string; 
@@ -257,6 +280,12 @@ export const AuthProvider: React.FC<{
       if (err.code === 'auth/operation-not-allowed') {
         errMsg = 'Phương thức Email/Mật khẩu chưa được bật. Bạn có thể sử dụng "Tiếp tục với Google" để đăng nhập nhanh.';
       }
+      if (err.code === 'auth/email-not-verified') {
+        setPendingVerificationEmail(email.trim());
+        setAuthModalMode('verify-email');
+        showToast('Tài khoản của bạn chưa xác thực email. Vui lòng kiểm tra Gmail (kể cả mục Spam) để xác nhận trước khi đăng nhập.', 'info');
+        return false;
+      }
       showToast(errMsg, 'error');
       return false;
     }
@@ -264,17 +293,30 @@ export const AuthProvider: React.FC<{
 
   const handleEmailRegister = async (email: string, pass: string, name: string): Promise<boolean> => {
     try {
-      const { user: authedUser, profile: newProfile } = await registerWithEmail(email, pass, name);
-      setUser(authedUser);
-      setProfile(newProfile);
-      setSavedRecipeIds([]);
+      const { user: authedUser, requiresVerification } = await registerWithEmail(email, pass, name);
 
-      const adminCheck = await checkIsAdminUser(authedUser.email || '');
-      setIsAdmin(adminCheck);
+      if (requiresVerification) {
+        // Do not grant access yet: keep the user signed out at the app
+        // level until they confirm the verification email sent to their Gmail.
+        setPendingVerificationEmail(authedUser.email || email.trim());
+        setAuthModalMode('verify-email');
+        showToast('Mã xác thực đã được gửi về Gmail của bạn. Vui lòng kiểm tra hộp thư đến (và cả mục Spam) rồi xác nhận để kích hoạt tài khoản.', 'info');
+        return false;
+      }
 
-      closeAuthModal();
-      showToast(`Đăng ký tài khoản thành công! Chào mừng ${newProfile.display_name}`, 'success');
-      await executePendingAction(newProfile, authedUser);
+      // Degraded fallback path only (Firebase Email/Password disabled on
+      // this project) — no real account exists to verify, so log in directly.
+      const newProfile = getUserSession()?.profile;
+      if (newProfile) {
+        setUser(authedUser);
+        setProfile(newProfile);
+        setSavedRecipeIds([]);
+        const adminCheck = await checkIsAdminUser(authedUser.email || '');
+        setIsAdmin(adminCheck);
+        closeAuthModal();
+        showToast(`Đăng ký tài khoản thành công! Chào mừng ${newProfile.display_name}`, 'success');
+        await executePendingAction(newProfile, authedUser);
+      }
       return true;
     } catch (err: any) {
       console.error('Email register error:', err);
@@ -290,16 +332,48 @@ export const AuthProvider: React.FC<{
     }
   };
 
+  const handleResendVerification = async (): Promise<void> => {
+    try {
+      await resendVerificationEmail();
+      showToast('Đã gửi lại mã xác thực về Gmail của bạn. Vui lòng kiểm tra cả hộp thư Spam.', 'success');
+    } catch (err: any) {
+      console.error('Resend verification error:', err);
+      let errMsg = 'Không thể gửi lại email xác thực. Vui lòng thử lại sau.';
+      if (err.code === 'auth/too-many-requests') errMsg = 'Bạn vừa yêu cầu gửi lại quá nhiều lần. Vui lòng đợi ít phút rồi thử lại.';
+      showToast(errMsg, 'error');
+    }
+  };
+
+  const handleCheckEmailVerification = async (): Promise<boolean> => {
+    try {
+      const verified = await reloadAndCheckEmailVerified();
+      if (!verified) {
+        showToast('Email vẫn chưa được xác thực. Vui lòng bấm vào liên kết xác thực trong Gmail trước.', 'error');
+        return false;
+      }
+      // reload() alone doesn't reliably re-fire onAuthStateChanged, so
+      // activate the session directly here rather than waiting for it.
+      if (auth.currentUser) {
+        await activateFirebaseUser(auth.currentUser);
+      }
+      showToast('Xác thực email thành công! Chào mừng bạn đến với Hôm Nay Ăn Gì AI.', 'success');
+      return true;
+    } catch (err: any) {
+      console.error('Check verification error:', err);
+      showToast('Không thể kiểm tra trạng thái xác thực. Vui lòng thử lại.', 'error');
+      return false;
+    }
+  };
+
   const handleResetPassword = async (email: string): Promise<void> => {
     try {
       await resetPassword(email);
-      showToast('Đã gửi email khôi phục mật khẩu. Vui lòng kiểm tra hòm thư của bạn!', 'success');
-      setAuthModalMode('login');
+      showToast('Đã gửi liên kết đặt lại mật khẩu về Gmail của bạn. Vui lòng kiểm tra hộp thư đến (và cả mục Spam)!', 'success');
     } catch (err: any) {
       console.error('Reset password error:', err);
-      let errMsg = 'Không thể gửi email đặt lại mật khẩu.';
-      if (err.code === 'auth/user-not-found') errMsg = 'Không tìm thấy tài khoản với email này.';
+      const errMsg = err.message || 'Không thể gửi email đặt lại mật khẩu.';
       showToast(errMsg, 'error');
+      throw err;
     }
   };
 
@@ -405,6 +479,7 @@ export const AuthProvider: React.FC<{
         isAuthModalOpen,
         authModalReason,
         authModalMode,
+        pendingVerificationEmail,
         toast,
         openAuthModal,
         closeAuthModal,
@@ -413,6 +488,8 @@ export const AuthProvider: React.FC<{
         handleEmailLogin,
         handleEmailRegister,
         handleResetPassword,
+        handleResendVerification,
+        handleCheckEmailVerification,
         handleSignOut,
         handleQuickLogin,
         toggleFavorite,

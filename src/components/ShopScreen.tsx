@@ -118,7 +118,7 @@ export const ShopScreen: React.FC<ShopScreenProps> = ({
   };
 
   return (
-    <div className="space-y-6 pb-20 sm:pb-12">
+    <div className="space-y-6 pb-28 md:pb-12">
       {/* Success notification for posting product */}
       {postSuccessNotice && (
         <div className="p-4 rounded-2xl bg-emerald-900 text-white border border-emerald-700 shadow-lg flex items-center justify-between animate-in fade-in duration-200">

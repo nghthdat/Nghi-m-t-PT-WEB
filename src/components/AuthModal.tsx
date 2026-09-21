@@ -1,24 +1,29 @@
 import React, { useState } from 'react';
-import { 
-  X, Mail, Lock, User as UserIcon, ChefHat, 
+import {
+  X, Mail, Lock, User as UserIcon, ChefHat,
   ArrowRight, Sparkles, AlertCircle, Bookmark,
-  Zap, Eye, EyeOff, UserPlus, LogIn, ChevronDown, ChevronUp
+  Zap, Eye, EyeOff, UserPlus, LogIn, ChevronDown, ChevronUp,
+  MailCheck, RefreshCw, LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { REALISTIC_USERS } from '../lib/firebase';
 
 export const AuthModal: React.FC = () => {
-  const { 
-    isAuthModalOpen, 
-    closeAuthModal, 
-    authModalReason, 
-    authModalMode, 
+  const {
+    isAuthModalOpen,
+    closeAuthModal,
+    authModalReason,
+    authModalMode,
     setAuthModalMode,
+    pendingVerificationEmail,
     handleGoogleSignIn,
     handleEmailLogin,
     handleEmailRegister,
     handleResetPassword,
-    handleQuickLogin
+    handleResendVerification,
+    handleCheckEmailVerification,
+    handleQuickLogin,
+    handleSignOut
   } = useAuth();
 
   // Login Form States
@@ -36,9 +41,11 @@ export const AuthModal: React.FC = () => {
 
   // Forgot Password State
   const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotEmailSent, setForgotEmailSent] = useState(false);
 
   // UI States
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingVerification, setIsCheckingVerification] = useState(false);
   const [localError, setLocalError] = useState('');
   const [showDemoAccounts, setShowDemoAccounts] = useState(false);
 
@@ -109,10 +116,11 @@ export const AuthModal: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const ok = await handleEmailRegister(email, registerPassword, name);
-      if (!ok) {
-        setLocalError('Đăng ký không thành công. Vui lòng thử lại.');
-      }
+      // handleEmailRegister returns false both when registration succeeded
+      // but now requires email verification, and on genuine failure — in
+      // both cases it already reports the outcome via toast, so no
+      // redundant local error banner is needed here.
+      await handleEmailRegister(email, registerPassword, name);
     } catch (err: any) {
       setLocalError(err.message || 'Đăng ký không thành công.');
     } finally {
@@ -125,19 +133,55 @@ export const AuthModal: React.FC = () => {
     e.preventDefault();
     setLocalError('');
 
-    if (!forgotEmail.trim()) {
+    const email = forgotEmail.trim();
+    if (!email) {
       setLocalError('Vui lòng nhập địa chỉ email để khôi phục.');
+      return;
+    }
+    if (!email.includes('@') || !email.includes('.')) {
+      setLocalError('Địa chỉ email không đúng định dạng.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await handleResetPassword(forgotEmail.trim());
+      await handleResetPassword(email);
+      setForgotEmailSent(true);
     } catch (err: any) {
       setLocalError(err.message || 'Không thể gửi email đặt lại mật khẩu.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // "Tôi đã xác thực email" button on the verify-email screen
+  const onCheckVerification = async () => {
+    setLocalError('');
+    setIsCheckingVerification(true);
+    try {
+      const verified = await handleCheckEmailVerification();
+      if (verified) {
+        closeAuthModal();
+      }
+    } finally {
+      setIsCheckingVerification(false);
+    }
+  };
+
+  const onResendVerification = async () => {
+    setLocalError('');
+    setIsSubmitting(true);
+    try {
+      await handleResendVerification();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const onCancelVerification = async () => {
+    setLocalError('');
+    await handleSignOut();
+    setAuthModalMode('login');
   };
 
   // Google Sign-In
@@ -196,7 +240,7 @@ export const AuthModal: React.FC = () => {
         </div>
 
         {/* Action Prompt Reason Banner if opened by an action */}
-        {authModalReason && (
+        {authModalReason && authModalMode !== 'verify-email' && (
           <div className="p-3 rounded-2xl bg-[#FFF0E6] border border-[#FFE0CC] text-xs text-[#a33e07] font-medium flex items-start gap-2">
             <Bookmark className="w-4 h-4 shrink-0 mt-0.5 text-[#a33e07]" />
             <span>{authModalReason}</span>
@@ -204,7 +248,7 @@ export const AuthModal: React.FC = () => {
         )}
 
         {/* 2 Segmented Tabs: Đăng nhập & Đăng ký */}
-        {authModalMode !== 'forgot' && (
+        {authModalMode !== 'forgot' && authModalMode !== 'verify-email' && (
           <div className="flex p-1 bg-[#F7F2EE] rounded-2xl border border-[#EAE0D5]">
             <button
               type="button"
@@ -282,6 +326,7 @@ export const AuthModal: React.FC = () => {
                   type="button"
                   onClick={() => {
                     setLocalError('');
+                    setForgotEmailSent(false);
                     setForgotEmail(loginIdentifier.includes('@') ? loginIdentifier : '');
                     setAuthModalMode('forgot');
                   }}
@@ -560,12 +605,12 @@ export const AuthModal: React.FC = () => {
         )}
 
         {/* SUB-VIEW: QUÊN MẬT KHẨU */}
-        {authModalMode === 'forgot' && (
+        {authModalMode === 'forgot' && !forgotEmailSent && (
           <form onSubmit={handleForgotSubmit} className="space-y-4">
             <div className="text-center">
               <h3 className="text-base font-bold text-[#2B2118]">Khôi phục mật khẩu</h3>
               <p className="text-xs text-[#6B5D4F] mt-1">
-                Nhập địa chỉ email đăng ký để nhận liên kết đặt lại mật khẩu.
+                Nhập địa chỉ Gmail đã đăng ký để nhận mã/liên kết xác thực đặt lại mật khẩu.
               </p>
             </div>
 
@@ -576,7 +621,7 @@ export const AuthModal: React.FC = () => {
                   type="email"
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
-                  placeholder="name@example.com"
+                  placeholder="name@gmail.com"
                   className="w-full text-xs sm:text-sm p-2.5 pl-9 rounded-xl bg-[#FFF8F0] border border-[#EAE0D5] focus:outline-[#a33e07]"
                   required
                 />
@@ -592,7 +637,7 @@ export const AuthModal: React.FC = () => {
               {isSubmitting ? (
                 <Sparkles className="w-4 h-4 animate-spin" />
               ) : (
-                <span>Gửi liên kết khôi phục</span>
+                <span>Gửi mã xác thực</span>
               )}
             </button>
 
@@ -609,6 +654,95 @@ export const AuthModal: React.FC = () => {
               </button>
             </div>
           </form>
+        )}
+
+        {/* SUB-VIEW: QUÊN MẬT KHẨU — Đã gửi mã xác thực */}
+        {authModalMode === 'forgot' && forgotEmailSent && (
+          <div className="space-y-4 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-[#FFF0E6] flex items-center justify-center mx-auto">
+              <MailCheck className="w-7 h-7 text-[#a33e07]" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-[#2B2118]">Kiểm tra Gmail của bạn</h3>
+              <p className="text-xs text-[#6B5D4F] mt-1.5 leading-relaxed">
+                Mã xác thực / liên kết đặt lại mật khẩu đã được gửi tới{' '}
+                <span className="font-bold text-[#2B2118]">{forgotEmail}</span>.
+                Vui lòng kiểm tra hộp thư đến, <span className="font-semibold">kể cả mục Spam</span>, rồi làm theo hướng dẫn để đặt mật khẩu mới.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setForgotEmailSent(false)}
+              className="w-full py-2.5 px-4 rounded-xl border border-[#EAE0D5] hover:border-[#a33e07]/40 bg-white hover:bg-[#FFF8F0] text-xs sm:text-sm font-bold text-[#2B2118] flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Chưa nhận được? Gửi lại</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setLocalError('');
+                setForgotEmailSent(false);
+                setAuthModalMode('login');
+              }}
+              className="text-xs font-bold text-[#a33e07] hover:underline"
+            >
+              ← Quay lại Đăng nhập
+            </button>
+          </div>
+        )}
+
+        {/* SUB-VIEW: XÁC THỰC EMAIL SAU KHI ĐĂNG KÝ */}
+        {authModalMode === 'verify-email' && (
+          <div className="space-y-4 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-[#FFF0E6] flex items-center justify-center mx-auto">
+              <MailCheck className="w-7 h-7 text-[#a33e07]" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-[#2B2118]">Xác thực Email để kích hoạt tài khoản</h3>
+              <p className="text-xs text-[#6B5D4F] mt-1.5 leading-relaxed">
+                Mã xác thực đã được gửi về Gmail{' '}
+                {pendingVerificationEmail && (
+                  <span className="font-bold text-[#2B2118]">{pendingVerificationEmail}</span>
+                )}
+                . Vui lòng kiểm tra hộp thư đến, <span className="font-semibold">kể cả mục Spam</span>, và bấm vào liên kết xác thực trước khi đăng nhập.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={onCheckVerification}
+              disabled={isCheckingVerification}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-[#a33e07] to-[#e8703a] hover:opacity-95 text-white text-xs sm:text-sm font-bold shadow-md shadow-[#a33e07]/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {isCheckingVerification ? (
+                <Sparkles className="w-4 h-4 animate-spin" />
+              ) : (
+                <span>Tôi đã xác thực email</span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={onResendVerification}
+              disabled={isSubmitting}
+              className="w-full py-2.5 px-4 rounded-xl border border-[#EAE0D5] hover:border-[#a33e07]/40 bg-white hover:bg-[#FFF8F0] text-xs sm:text-sm font-bold text-[#2B2118] flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Gửi lại mã xác thực</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onCancelVerification}
+              className="text-xs font-bold text-[#6B5D4F] hover:text-[#2B2118] flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Đăng ký sai email? Quay lại đăng nhập</span>
+            </button>
+          </div>
         )}
 
         {/* Footer info & toggle note */}

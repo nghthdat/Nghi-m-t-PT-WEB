@@ -53,6 +53,7 @@ export interface Recipe {
   calories: number; // kcal
   nutrition?: NutritionInfo;
   categories: string[]; // e.g. ['man', 'mien-bac', 'quick']
+  dishType?: 'mon-chinh' | 'mon-canh' | 'mon-xao' | 'an-vat'; // Loại món: Món chính / Món canh / Món xào / Ăn vặt
   ingredients: Ingredient[];
   spiceIngredients?: Ingredient[];
   steps: InstructionStep[];
