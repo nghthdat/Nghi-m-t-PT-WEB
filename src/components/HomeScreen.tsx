@@ -108,7 +108,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
 
           <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-white leading-tight">
-            Hôm nay nhà mình ăn gì?
+            Hôm nay ăn gì đây cả nhà ơi? (Test OK)
           </h1>
 
           <p className="text-xs sm:text-sm text-amber-100/80 max-w-lg mx-auto leading-relaxed">
