@@ -3,13 +3,29 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from './../context/AuthContext';
 import { OrderCustomerInfo, Order } from '../types';
 import { formatVND } from '../lib/formatCurrency';
-import { 
-  X, CheckCircle2, ShieldCheck, Truck, CreditCard, 
-  Banknote, QrCode, Smartphone, ArrowLeft, Copy, Check 
+import {
+  X, CheckCircle2, ShieldCheck, Truck, CreditCard,
+  Banknote, QrCode, Smartphone, ArrowLeft, Copy, Check,
+  Loader2, AlertCircle
 } from 'lucide-react';
 
 interface CheckoutModalProps {
   onNavigateToShop?: () => void;
+}
+
+// Vietnamese mobile numbers: 10 digits starting with a valid carrier prefix
+// (03/05/07/08/09), optionally written with the +84 country code instead of
+// the leading 0.
+const VN_PHONE_REGEX = /^(0|\+84)(3|5|7|8|9)\d{8}$/;
+
+function isValidVietnamesePhone(phone: string): boolean {
+  return VN_PHONE_REGEX.test(phone.trim().replace(/[\s.-]/g, ''));
+}
+
+interface FormFieldErrors {
+  fullName?: string;
+  phone?: string;
+  address?: string;
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }) => {
@@ -49,11 +65,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
     }
   }, [profile, user]);
 
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'vietqr' | 'momo'>('cod');
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'vietqr' | 'momo' | ''>('');
+  const [paymentError, setPaymentError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
   const [copiedBankInfo, setCopiedBankInfo] = useState(false);
   const [validationError, setValidationError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FormFieldErrors>({});
 
   if (!isCheckoutOpen) return null;
 
@@ -61,33 +79,67 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (validationError) setValidationError('');
+    if (fieldErrors[name as keyof FormFieldErrors]) {
+      setFieldErrors(prev => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const validateForm = (): FormFieldErrors => {
+    const errors: FormFieldErrors = {};
+
+    if (!formData.fullName.trim()) {
+      errors.fullName = 'Vui lòng nhập họ và tên người nhận.';
+    }
+
+    const phone = formData.phone.trim();
+    if (!phone) {
+      errors.phone = 'Vui lòng nhập số điện thoại.';
+    } else if (!isValidVietnamesePhone(phone)) {
+      errors.phone = 'Vui lòng nhập số điện thoại hợp lệ (10 số, đầu số 03/05/07/08/09).';
+    }
+
+    if (!formData.address.trim()) {
+      errors.address = 'Địa chỉ giao hàng không được để trống.';
+    }
+
+    return errors;
   };
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.fullName.trim()) {
-      setValidationError('Vui lòng nhập họ và tên người nhận.');
+
+    // Guard against a double-submit from a rapid double click racing the
+    // `disabled` attribute update.
+    if (isSubmitting) return;
+
+    setValidationError('');
+    const errors = validateForm();
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
       return;
     }
-    if (!formData.phone.trim() || formData.phone.length < 9) {
-      setValidationError('Vui lòng nhập số điện thoại hợp lệ (ít nhất 9-10 chữ số).');
+
+    if (!paymentMethod) {
+      setPaymentError('Vui lòng chọn một phương thức thanh toán trước khi tiếp tục.');
       return;
     }
-    if (!formData.address.trim()) {
-      setValidationError('Vui lòng nhập địa chỉ giao hàng cụ thể.');
-      return;
-    }
+    setPaymentError('');
 
     setIsSubmitting(true);
     try {
       const order = await placeOrder(formData, paymentMethod);
       setCompletedOrder(order);
     } catch (err) {
-      console.error(err);
-      setValidationError('Có lỗi xảy ra khi xử lý đơn hàng. Vui lòng thử lại.');
+      console.error('Order placement failed:', err);
+      setValidationError('Có lỗi xảy ra khi xử lý đơn hàng. Vui lòng kiểm tra lại thông tin và thử lại.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSelectPayment = (method: 'cod' | 'vietqr' | 'momo') => {
+    setPaymentMethod(method);
+    if (paymentError) setPaymentError('');
   };
 
   const handleCopy = (text: string) => {
@@ -99,6 +151,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
   const handleClose = () => {
     setIsCheckoutOpen(false);
     setCompletedOrder(null);
+    setFieldErrors({});
+    setValidationError('');
+    setPaymentError('');
   };
 
   return (
@@ -169,6 +224,31 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
               <div className="flex items-center justify-between pt-2 border-t border-[#EAE0D5] text-sm font-black text-[#2B2118]">
                 <span>Tổng giá trị đơn:</span>
                 <span className="text-[#a33e07] text-base">{formatVND(completedOrder.total)}</span>
+              </div>
+            </div>
+
+            {/* Order Items Summary */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#EAE0D5] text-left space-y-2">
+              <h4 className="text-xs font-bold text-[#2B2118]">
+                Tóm tắt sản phẩm đã mua ({completedOrder.items.length} món):
+              </h4>
+              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                {completedOrder.items.map((item, idx) => (
+                  <div key={`${item.productId}-${idx}`} className="flex items-center gap-2.5 text-xs py-1 border-b border-[#F7F2EE] last:border-b-0">
+                    <img
+                      src={item.productImage}
+                      alt={item.productName}
+                      referrerPolicy="no-referrer"
+                      className="w-9 h-9 rounded-lg object-cover bg-[#FAF5F0] border border-[#EAE0D5] shrink-0"
+                    />
+                    <span className="flex-1 min-w-0 truncate text-[#524436]">
+                      {item.quantity}x {item.productName} {item.selectedOption ? `(${item.selectedOption})` : ''}
+                    </span>
+                    <span className="font-bold text-[#2B2118] shrink-0">
+                      {formatVND(item.price * item.quantity)}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -264,8 +344,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
                     value={formData.fullName}
                     onChange={handleInputChange}
                     placeholder="VD: Nguyễn Văn A"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#EAE0D5] text-xs focus:outline-hidden focus:border-[#a33e07] bg-[#FAF5F0]"
+                    aria-invalid={!!fieldErrors.fullName}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-hidden bg-[#FAF5F0] ${
+                      fieldErrors.fullName ? 'border-red-400 focus:border-red-500' : 'border-[#EAE0D5] focus:border-[#a33e07]'
+                    }`}
                   />
+                  {fieldErrors.fullName && (
+                    <p className="mt-1 text-[11px] text-red-600 font-semibold flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {fieldErrors.fullName}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -279,8 +368,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
                     value={formData.phone}
                     onChange={handleInputChange}
                     placeholder="VD: 0912345678"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#EAE0D5] text-xs focus:outline-hidden focus:border-[#a33e07] bg-[#FAF5F0]"
+                    aria-invalid={!!fieldErrors.phone}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-hidden bg-[#FAF5F0] ${
+                      fieldErrors.phone ? 'border-red-400 focus:border-red-500' : 'border-[#EAE0D5] focus:border-[#a33e07]'
+                    }`}
                   />
+                  {fieldErrors.phone && (
+                    <p className="mt-1 text-[11px] text-red-600 font-semibold flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {fieldErrors.phone}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -296,8 +394,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
                     value={formData.address}
                     onChange={handleInputChange}
                     placeholder="VD: 123 Phố Tràng Tiền, Hoàn Kiếm"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#EAE0D5] text-xs focus:outline-hidden focus:border-[#a33e07] bg-[#FAF5F0]"
+                    aria-invalid={!!fieldErrors.address}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-hidden bg-[#FAF5F0] ${
+                      fieldErrors.address ? 'border-red-400 focus:border-red-500' : 'border-[#EAE0D5] focus:border-[#a33e07]'
+                    }`}
                   />
+                  {fieldErrors.address && (
+                    <p className="mt-1 text-[11px] text-red-600 font-semibold flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {fieldErrors.address}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -346,8 +453,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <label 
-                  onClick={() => setPaymentMethod('cod')}
+                <label
+                  onClick={() => handleSelectPayment('cod')}
                   className={`p-3.5 rounded-2xl border flex flex-col justify-between cursor-pointer transition-all ${
                     paymentMethod === 'cod'
                       ? 'border-[#a33e07] bg-[#FFF0E6] ring-1 ring-[#a33e07]'
@@ -360,7 +467,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
                       type="radio"
                       name="paymentMethod"
                       checked={paymentMethod === 'cod'}
-                      onChange={() => setPaymentMethod('cod')}
+                      onChange={() => handleSelectPayment('cod')}
                       className="accent-[#a33e07]"
                     />
                   </div>
@@ -370,8 +477,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
                   </div>
                 </label>
 
-                <label 
-                  onClick={() => setPaymentMethod('vietqr')}
+                <label
+                  onClick={() => handleSelectPayment('vietqr')}
                   className={`p-3.5 rounded-2xl border flex flex-col justify-between cursor-pointer transition-all ${
                     paymentMethod === 'vietqr'
                       ? 'border-[#a33e07] bg-[#FFF0E6] ring-1 ring-[#a33e07]'
@@ -384,7 +491,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
                       type="radio"
                       name="paymentMethod"
                       checked={paymentMethod === 'vietqr'}
-                      onChange={() => setPaymentMethod('vietqr')}
+                      onChange={() => handleSelectPayment('vietqr')}
                       className="accent-[#a33e07]"
                     />
                   </div>
@@ -394,8 +501,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
                   </div>
                 </label>
 
-                <label 
-                  onClick={() => setPaymentMethod('momo')}
+                <label
+                  onClick={() => handleSelectPayment('momo')}
                   className={`p-3.5 rounded-2xl border flex flex-col justify-between cursor-pointer transition-all ${
                     paymentMethod === 'momo'
                       ? 'border-[#a33e07] bg-[#FFF0E6] ring-1 ring-[#a33e07]'
@@ -408,7 +515,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
                       type="radio"
                       name="paymentMethod"
                       checked={paymentMethod === 'momo'}
-                      onChange={() => setPaymentMethod('momo')}
+                      onChange={() => handleSelectPayment('momo')}
                       className="accent-[#a33e07]"
                     />
                   </div>
@@ -418,6 +525,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
                   </div>
                 </label>
               </div>
+
+              {paymentError && (
+                <p className="text-[11px] text-red-600 font-semibold flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  {paymentError}
+                </p>
+              )}
             </div>
 
             {/* Order Items Preview */}
@@ -474,10 +588,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ onNavigateToShop }
                 id="btn-confirm-order"
                 type="submit"
                 disabled={isSubmitting || cart.length === 0}
-                className="flex-1 py-3 px-5 rounded-2xl bg-gradient-to-r from-[#a33e07] to-[#e8703a] hover:opacity-95 text-white font-bold text-xs sm:text-sm shadow-md shadow-[#a33e07]/20 flex items-center justify-center gap-2 transition-all active:scale-98 disabled:opacity-50"
+                className="flex-1 py-3 px-5 rounded-2xl bg-gradient-to-r from-[#a33e07] to-[#e8703a] hover:opacity-95 text-white font-bold text-xs sm:text-sm shadow-md shadow-[#a33e07]/20 flex items-center justify-center gap-2 transition-all active:scale-98 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isSubmitting ? (
-                  <span>Đang xử lý đơn hàng...</span>
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Đang xử lý đơn hàng...</span>
+                  </>
                 ) : (
                   <span>Hoàn tất đặt hàng ({formatVND(finalTotal)})</span>
                 )}

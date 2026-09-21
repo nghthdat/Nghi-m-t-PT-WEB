@@ -210,44 +210,56 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     showToast('Đã gỡ mã giảm giá.', 'info');
   };
 
-  // Place Order
+  // Place Order — defensively guarded so a failure here surfaces as a
+  // catchable error to the caller instead of leaving the cart/orders state
+  // half-updated or crashing the checkout UI.
   const placeOrder = async (
     customerInfo: OrderCustomerInfo,
     paymentMethod: 'cod' | 'vietqr' | 'momo'
   ): Promise<Order> => {
-    const orderNum = 'AGHN-' + Math.floor(100000 + Math.random() * 900000);
-    const newOrder: Order = {
-      id: 'ord_' + Date.now(),
-      orderNumber: orderNum,
-      userId: user?.uid,
-      customerInfo,
-      items: cart.map(item => ({
-        productId: item.productId,
-        productName: item.product.name,
-        productImage: item.product.image,
-        price: item.product.price,
-        quantity: item.quantity,
-        selectedOption: item.selectedOption
-      })),
-      subtotal,
-      discountAmount,
-      appliedCoupon: appliedCoupon?.code,
-      shippingFee,
-      total: finalTotal,
-      paymentMethod,
-      paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
-      orderStatus: 'confirmed',
-      createdAt: new Date().toISOString()
-    };
+    if (cart.length === 0) {
+      throw new Error('Giỏ hàng đang trống, không thể tạo đơn hàng.');
+    }
 
-    // Save order locally and inform user
-    setOrders(prev => [newOrder, ...prev]);
-    clearCart();
-    setIsCheckoutOpen(false);
-    setIsCartOpen(false);
+    try {
+      const orderNum = 'AGHN-' + Math.floor(100000 + Math.random() * 900000);
+      const newOrder: Order = {
+        id: 'ord_' + Date.now(),
+        orderNumber: orderNum,
+        userId: user?.uid,
+        customerInfo,
+        items: cart.map(item => ({
+          productId: item.productId,
+          productName: item.product.name,
+          productImage: item.product.image,
+          price: item.product.price,
+          quantity: item.quantity,
+          selectedOption: item.selectedOption
+        })),
+        subtotal,
+        discountAmount,
+        appliedCoupon: appliedCoupon?.code,
+        shippingFee,
+        total: finalTotal,
+        paymentMethod,
+        paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
+        orderStatus: 'confirmed',
+        createdAt: new Date().toISOString()
+      };
 
-    showToast(`Đặt hàng thành công! Mã đơn: ${orderNum}`, 'success');
-    return newOrder;
+      // Save order (persisted to localStorage via the orders useEffect above)
+      // and reset the cart only after the order object is built successfully.
+      setOrders(prev => [newOrder, ...prev]);
+      clearCart();
+      setIsCheckoutOpen(false);
+      setIsCartOpen(false);
+
+      showToast(`Đặt hàng thành công! Mã đơn: ${orderNum}`, 'success');
+      return newOrder;
+    } catch (err) {
+      console.error('Failed to place order:', err);
+      throw new Error('Không thể tạo đơn hàng. Vui lòng thử lại.');
+    }
   };
 
   return (

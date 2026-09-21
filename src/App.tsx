@@ -14,6 +14,7 @@ import { CheckoutModal } from './components/CheckoutModal';
 import { AuthModal } from './components/AuthModal';
 import { Footer } from './components/Footer';
 import { StaticPageScreen } from './components/StaticPageScreen';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { Recipe, PendingRecipe, SuggestedRecipeMatch } from './types';
@@ -353,12 +354,14 @@ function MainAppContent({ currentTab, setCurrentTab }: MainAppContentProps) {
 export function App() {
   const [currentTab, setCurrentTab] = useState<string>('home');
   return (
-    <AuthProvider onNavigateTab={setCurrentTab}>
-      <CartProvider>
-        <MainAppContent currentTab={currentTab} setCurrentTab={setCurrentTab} />
-        <Analytics />
-      </CartProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider onNavigateTab={setCurrentTab}>
+        <CartProvider>
+          <MainAppContent currentTab={currentTab} setCurrentTab={setCurrentTab} />
+          <Analytics />
+        </CartProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
