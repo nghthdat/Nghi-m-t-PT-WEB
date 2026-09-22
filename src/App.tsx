@@ -32,7 +32,7 @@ interface MainAppContentProps {
 const STATIC_PAGE_TABS = ['about', 'privacy', 'terms', 'faq', 'contact', 'return-policy', 'shipping-policy', 'payment-policy'];
 
 function MainAppContent({ currentTab, setCurrentTab }: MainAppContentProps) {
-  const { toast, isAdmin } = useAuth();
+  const { toast, isAdmin, showToast } = useAuth();
   const [profileInitialTab, setProfileInitialTab] = useState<'posted' | 'saved' | 'cart' | 'orders' | 'badges' | 'moderation'>('posted');
   const [recipes, setRecipes] = useState<Recipe[]>(INITIAL_RECIPES);
   const [isLoadingRecipes, setIsLoadingRecipes] = useState<boolean>(true);
@@ -103,9 +103,17 @@ function MainAppContent({ currentTab, setCurrentTab }: MainAppContentProps) {
           if (data.success && data.data) {
             setSelectedRecipe(data.data);
             setCurrentTab('recipe-detail');
+          } else {
+            // Recipe not found (e.g. invalid shared link) — notify user and clean URL
+            console.warn('Shared recipe not found:', recipeId);
+            showToast('Không tìm thấy công thức này. Link có thể đã hết hạn hoặc bị xóa.', 'error');
+            const cleanUrl = new URL(window.location.href);
+            cleanUrl.searchParams.delete('recipeId');
+            window.history.replaceState({}, '', cleanUrl.toString());
           }
         } catch (err) {
           console.error('Failed to fetch shared recipe:', err);
+          showToast('Không thể tải công thức. Vui lòng thử lại.', 'error');
         }
       };
       fetchSpecificRecipe();
