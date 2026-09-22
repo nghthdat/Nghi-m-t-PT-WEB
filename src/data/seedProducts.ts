@@ -16,18 +16,18 @@ export const INITIAL_PRODUCTS: ProductItem[] = [
     priceMax: 225000,
     originalPrice: 260000,
     discountPercent: 23,
-    image: 'https://images.unsplash.com/photo-1596796901842-8c8808d98d28?auto=format&fit=crop&w=800&q=80',
+    image: '/images/nd1.jpg',
     images: [
-      'https://images.unsplash.com/photo-1596796901842-8c8808d98d28?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1621060936371-ad4e625ff115?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1603517409249-14a09cdeefb6?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1620216656730-8a18fa5be519?auto=format&fit=crop&w=800&q=80'
+      '/images/nd1.jpg',
+      '/images/nd2.jpg',
+      '/images/nd3.jpg',
+      '/images/nd4.jpg'
     ],
     gallery: [
-      'https://images.unsplash.com/photo-1596796901842-8c8808d98d28?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1621060936371-ad4e625ff115?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1603517409249-14a09cdeefb6?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1620216656730-8a18fa5be519?auto=format&fit=crop&w=800&q=80'
+      '/images/nd1.jpg',
+      '/images/nd2.jpg',
+      '/images/nd3.jpg',
+      '/images/nd4.jpg'
     ],
     rating: 4.9,
     reviewCount: 142,
@@ -66,18 +66,18 @@ export const INITIAL_PRODUCTS: ProductItem[] = [
     priceMax: 590000,
     originalPrice: 650000,
     discountPercent: 25,
-    image: 'https://images.unsplash.com/photo-1593618998160-e34014e67546?auto=format&fit=crop&w=800&q=80',
+    image: '/images/dao1.png',
     images: [
-      'https://images.unsplash.com/photo-1593618998160-e34014e67546?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1590794056226-79ef3a8147e1?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1583307567845-81206144e59f?auto=format&fit=crop&w=800&q=80'
+      '/images/dao1.png',
+      '/images/dao2.png',
+      '/images/dao3.png',
+      '/images/dao4.png'
     ],
     gallery: [
-      'https://images.unsplash.com/photo-1593618998160-e34014e67546?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1590794056226-79ef3a8147e1?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1583307567845-81206144e59f?auto=format&fit=crop&w=800&q=80'
+      '/images/dao1.png',
+      '/images/dao2.png',
+      '/images/dao3.png',
+      '/images/dao4.png'
     ],
     rating: 5.0,
     reviewCount: 98,
@@ -116,18 +116,18 @@ export const INITIAL_PRODUCTS: ProductItem[] = [
     priceMax: 650000,
     originalPrice: 720000,
     discountPercent: 19,
-    image: 'https://images.unsplash.com/photo-1585837575652-267c041d77d4?auto=format&fit=crop&w=800&q=80',
+    image: '/images/cg1.png',
     images: [
-      'https://images.unsplash.com/photo-1585837575652-267c041d77d4?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1588720120199-5a5dd9571bf6?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1605332308960-9140b61d36a8?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1581005206371-f925f3c153b9?auto=format&fit=crop&w=800&q=80'
+      '/images/cg1.png',
+      '/images/cg2.png',
+      '/images/cg3.png',
+      '/images/cg4.png'
     ],
     gallery: [
-      'https://images.unsplash.com/photo-1585837575652-267c041d77d4?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1588720120199-5a5dd9571bf6?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1605332308960-9140b61d36a8?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1581005206371-f925f3c153b9?auto=format&fit=crop&w=800&q=80'
+      '/images/cg1.png',
+      '/images/cg2.png',
+      '/images/cg3.png',
+      '/images/cg4.png'
     ],
     rating: 4.8,
     reviewCount: 86,
@@ -364,18 +364,18 @@ export const INITIAL_PRODUCTS: ProductItem[] = [
     priceMax: 395000,
     originalPrice: 450000,
     discountPercent: 18,
-    image: 'https://images.unsplash.com/photo-1590794056226-79ef3a8147e1?auto=format&fit=crop&w=800&q=80',
+    image: '/images/tgn1.png',
     images: [
-      'https://images.unsplash.com/photo-1590794056226-79ef3a8147e1?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1616422285623-149b80757e2a?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1589578663737-77296da201ee?auto=format&fit=crop&w=800&q=80'
+      '/images/tgn1.png',
+      '/images/tgn2.png',
+      '/images/tgn3.png',
+      '/images/tgn4.png'
     ],
     gallery: [
-      'https://images.unsplash.com/photo-1590794056226-79ef3a8147e1?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1616422285623-149b80757e2a?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1589578663737-77296da201ee?auto=format&fit=crop&w=800&q=80'
+      '/images/tgn1.png',
+      '/images/tgn2.png',
+      '/images/tgn3.png',
+      '/images/tgn4.png'
     ],
     rating: 4.9,
     reviewCount: 78,
