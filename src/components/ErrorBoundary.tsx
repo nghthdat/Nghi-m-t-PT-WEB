@@ -13,6 +13,11 @@ interface ErrorBoundaryState {
 // in the tree (e.g. during checkout) and shows a recoverable message instead
 // of letting React unmount everything into a blank white page.
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Explicit declarations required for TypeScript to resolve this.state / this.props
+  // when useDefineForClassFields is disabled in tsconfig.
+  declare state: ErrorBoundaryState;
+  declare props: ErrorBoundaryProps;
+
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };

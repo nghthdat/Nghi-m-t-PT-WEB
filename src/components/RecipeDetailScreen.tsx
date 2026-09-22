@@ -673,7 +673,7 @@ export const RecipeDetailScreen: React.FC<RecipeDetailScreenProps> = ({
                   {profile?.avatar_url || user.photoURL ? (
                     <img 
                       src={profile?.avatar_url || user.photoURL || ''} 
-                      alt="" 
+                      alt={profile?.display_name || user.displayName || user.email?.split('@')[0] || 'Avatar người dùng'} 
                       className="w-full h-full object-cover" 
                     />
                   ) : (
@@ -770,7 +770,7 @@ export const RecipeDetailScreen: React.FC<RecipeDetailScreenProps> = ({
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-full bg-[#a33e07] text-white text-xs font-bold flex items-center justify-center overflow-hidden shrink-0">
                         {cmt.userAvatar ? (
-                          <img src={cmt.userAvatar} alt="" className="w-full h-full object-cover" />
+                          <img src={cmt.userAvatar} alt={cmt.userName || 'Avatar người dùng'} className="w-full h-full object-cover" />
                         ) : (
                           (cmt.userName || 'U').charAt(0).toUpperCase()
                         )}

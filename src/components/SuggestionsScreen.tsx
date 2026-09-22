@@ -195,7 +195,16 @@ export const SuggestionsScreen: React.FC<SuggestionsScreenProps> = ({
       {/* Results List */}
       {!isLoading && (
         <div className="space-y-4">
-          {sortedSuggestions.length === 0 ? (
+          {/* Guard: require at least one ingredient before showing any results */}
+          {ingredients.length === 0 ? (
+            <div className="bg-white rounded-2xl p-10 text-center border border-[#EAE0D5] space-y-3">
+              <ChefHat className="w-16 h-16 text-[#a33e07]/30 mx-auto stroke-1" />
+              <h3 className="font-bold text-[#2B2118]">Nhập nguyên liệu để bắt đầu</h3>
+              <p className="text-xs text-[#6B5D4F] max-w-md mx-auto">
+                Thêm ít nhất một nguyên liệu bạn đang có (ví dụ: trứng, thịt bò, cà chua...) để AI gợi ý món ăn phù hợp.
+              </p>
+            </div>
+          ) : sortedSuggestions.length === 0 ? (
             <div className="bg-white rounded-2xl p-10 text-center border border-[#EAE0D5] space-y-3">
               <ChefHat className="w-12 h-12 text-[#8C7D6F] mx-auto stroke-1" />
               <h3 className="font-bold text-[#2B2118]">Không tìm thấy món ăn khớp hoàn toàn</h3>

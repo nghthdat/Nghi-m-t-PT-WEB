@@ -134,7 +134,7 @@ export const INITIAL_RECIPES: Recipe[] = [
       calories: 120
     },
     dishType: 'mon-canh',
-    categories: ['quick', 'Dưới 15 phút', 'Ít calo', 'Tất cả'],
+    categories: ['quick', 'Ít calo', 'Tất cả'],
     ingredients: [
       { name: 'Cà chua', amount: '2 quả' },
       { name: 'Trứng gà', amount: '2 quả' },
@@ -380,7 +380,7 @@ export const INITIAL_RECIPES: Recipe[] = [
       calories: 520
     },
     dishType: 'mon-xao',
-    categories: ['man', 'quick', 'Đồ mặn', 'Dưới 15 phút', 'Tất cả'],
+    categories: ['man', 'quick', 'Đồ mặn', 'Tất cả'],
     ingredients: [
       { name: 'Thịt thăn bò', amount: '400g' },
       { name: 'Ớt chuông đỏ, xanh', amount: '1 quả' },

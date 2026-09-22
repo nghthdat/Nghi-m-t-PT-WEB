@@ -241,10 +241,10 @@ function rankRecipesLocal(userIngredients: string[]): SuggestedRecipeMatch[] {
 
       // Boost percentage if primary ingredient matches
       if (matchPct < 50) {
-        matchPct = Math.min(85, Math.round(matchRatio * 100 + 40));
+        matchPct = Math.min(85, Math.round(matchRatio * 100 + 20));
       }
       if (matched.length >= 2 && matchPct < 80) {
-        matchPct = Math.min(95, matchPct + 30);
+        matchPct = Math.min(95, matchPct + 15);
       }
       if (missing.length === 0) {
         matchPct = 100;
