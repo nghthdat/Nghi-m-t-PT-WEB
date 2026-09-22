@@ -463,18 +463,18 @@ export const INITIAL_PRODUCTS: ProductItem[] = [
     priceMax: 195000,
     originalPrice: 220000,
     discountPercent: 16,
-    image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=80',
+    image: '/images/mk_canhchua.png',
     images: [
-      'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1493770348161-369560ae357d?auto=format&fit=crop&w=800&q=80'
+      '/images/mk_canhchua.png',
+      '/images/mk_canhchua.png',
+      '/images/mk_canhchua.png',
+      '/images/mk_canhchua.png'
     ],
     gallery: [
-      'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1493770348161-369560ae357d?auto=format&fit=crop&w=800&q=80'
+      '/images/mk_canhchua.png',
+      '/images/mk_canhchua.png',
+      '/images/mk_canhchua.png',
+      '/images/mk_canhchua.png'
     ],
     rating: 4.9,
     reviewCount: 89,
